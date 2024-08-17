@@ -29,13 +29,14 @@ class Indexable:
         """
         return self.grid[-1]
 
-    def set_terminal(self, state: Sequence[float]) -> None:
+    def set_state(self, index: int, state: Sequence[float]) -> None:
         """Set terminal state values to `state`
 
         Args:
+            index (int): index of state to set
             state (Sequence[float]): final state values to set to
         """
-        self.grid[-1] = cast(list[float], state)
+        self.grid[index] = cast(list[float], state)
 
     @overload
     def __getitem__(self, index: int) -> Sequence[float]: ...
@@ -53,3 +54,18 @@ class Indexable:
         if isinstance(index, slice):
             return self.grid[index]
         raise ValueError("Unsupported getitem index")
+
+
+class Constant(Indexable):
+    def __init__(self, value: float) -> None:
+        self.value = value
+        super().__init__(steps=-1)
+
+    @overload
+    def __getitem__(self, index: int) -> Sequence[float]: ...
+    @overload
+    def __getitem__(self, index: tuple[int, int]) -> float: ...
+    @overload
+    def __getitem__(self, index: slice) -> Sequence[Sequence[float]]: ...
+    def __getitem__(self, index: int | tuple[int, int] | slice) -> float | Sequence[float] | Sequence[Sequence[float]]:
+        return self.value

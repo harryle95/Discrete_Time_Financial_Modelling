@@ -1,60 +1,56 @@
-from typing import overload
-
-from src.models.base import CRRAssetParams, TerminalAssetParams
+from src.models.base import StateT
 from src.models.indexable import Indexable
 
-__all__ = ("Asset", "CRRAsset", "TerminalAsset", "asset_factory")
+__all__ = ("StandardAsset", "CRRAsset", "asset_factory")
 
 
-class Asset(Indexable):
+class AssetModel(Indexable): ...
+
+
+class StandardAsset(AssetModel):
     """Base Asset Model"""
 
-    def __init__(self, S_0: float, steps: int) -> None:
-        self.S_0 = S_0
-        self.steps = steps
-        super().__init__(steps=self.steps)
-        self.grid[0] = [S_0]
+    def __init__(self, states: StateT, steps: int) -> None:
+        super().__init__(steps)
+        if 0 not in states:
+            raise ValueError("Asset Model requires current asset value at t=0")
+        for time, state in states.items():
+            self.set_state(time, state)
 
 
-class CRRAsset(Asset):
+class CRRAsset(AssetModel):
     """Asset Model under CRR assumption"""
 
-    def __init__(self, params: CRRAssetParams) -> None:
-        self.u = params.u
-        self.d = params.d
-        super().__init__(params.S_0, params.steps)
-        self.compute_grid()
-
-    def compute_grid(self) -> None:
+    def __init__(self, S: float, u: float, d: float, steps: int) -> None:
+        super().__init__(steps=steps)
+        self.S = S
+        self.u = u
+        self.d = d
         for t in range(self.steps + 1):
-            self.grid[t] = [self.S_0 * (self.u**index) * (self.d ** (t - index)) for index in range(t + 1)]
+            self.set_state(t, [self.S * (self.u**index) * (self.d ** (t - index)) for index in range(t + 1)])
 
 
-class TerminalAsset(Asset):
-    """Asset model when terminal asset states are known"""
-
-    def __init__(self, params: TerminalAssetParams) -> None:
-        super().__init__(params.S_0, params.steps)
-        self.set_terminal(params.V_T)
-
-
-@overload
-def asset_factory(params: CRRAssetParams) -> CRRAsset: ...
-@overload
-def asset_factory(params: TerminalAssetParams) -> TerminalAsset: ...
 def asset_factory(
-    params: CRRAssetParams | TerminalAssetParams,
-) -> CRRAsset | TerminalAsset:
-    """Factory method that returns an Asset class based on parameter type
+    steps: int,
+    S: float | None = None,
+    u: float | None = None,
+    d: float | None = None,
+    states: StateT | None = None,
+) -> CRRAsset | StandardAsset:
+    """Factory method to generate asset model
 
     Args:
-        params (CRRAssetParams | TerminalAssetParams): parameter type
+        steps (int): number of steps
+        S (float | None, optional): used for CRR model - initial price. Defaults to None.
+        u (float | None, optional): used for CRR model - up factor. Defaults to None.
+        d (float | None, optional): used for CRR model - down factor. Defaults to None.
+        states (StateT | None, optional): used for state model - known state values. Defaults to None.
 
     Returns:
-        CRRAsset | TerminalAsset: matching Asset
+        CRRAsset | StandardAsset: model
     """
-    if isinstance(params, CRRAssetParams):
-        return CRRAsset(params)
-    if isinstance(params, TerminalAssetParams):
-        return TerminalAsset(params)
-    raise ValueError("Unexpected param type")
+    if states:
+        return StandardAsset(states=states, steps=steps)
+    if not S or not u or not d:
+        raise ValueError("CRR model expects non null S, u, d")
+    return CRRAsset(S, u, d, steps)

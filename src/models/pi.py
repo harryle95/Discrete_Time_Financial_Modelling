@@ -1,139 +1,65 @@
-from typing import Any, overload
+from src.helpers import calculate_pi, calculate_pi_CRR
+from src.models.asset import AssetModel, CRRAsset
+from src.models.base import StateT
+from src.models.indexable import Constant, Indexable
+from src.models.interest import ConstantInterestRate, InterestRateModel
 
-from src.helpers import calculate_down_state_prob, calculate_up_state_prob
-from src.models.asset import Asset, CRRAsset
-from src.models.base import BinomPiParams, CRRPiParams, TerminalPiParams
-
-__all__ = ("Pi", "CRRPi", "BinomPi", "TerminalPi", "pi_factory", "get_pi_from_asset")
-
-
-class Pi:
-    """Abstract Risk neutral probability Model under binomial assumption"""
-
-    def __init__(self, R: float, **kwargs: Any) -> None:
-        self.R = R
-
-    @property
-    def p_up(self) -> float:
-        """Probability of achieving the upstate"""
-        return NotImplemented
-
-    @property
-    def p_down(self) -> float:
-        """Probability of achieving the downstate"""
-        return NotImplemented
+__all__ = (
+    "ConstantPi",
+    "PiModel",
+    "StatePi",
+    "VariablePi",
+    "pi_factory",
+)
 
 
-class CRRPi(Pi):
-    """Risk Neutral probability model under the CRR assumption"""
-
-    def __init__(self, params: CRRPiParams) -> None:
-        self.S_0 = params.S_0
-        self.u = params.u
-        self.d = params.d
-        super().__init__(R=params.R)
-
-    @property
-    def p_up(self) -> float:
-        return (self.R - self.d) / (self.u - self.d)
-
-    @property
-    def p_down(self) -> float:
-        return (self.u - self.R) / (self.u - self.d)
+class PiModel(Indexable): ...
 
 
-class BinomPi(Pi):
-    """Risk Neutral probability model under the One-Step Binomial setting"""
-
-    def __init__(self, params: BinomPiParams) -> None:
-        self.S_0 = params.S_0
-        self.S_11 = params.S_11
-        self.S_10 = params.S_10
-        self.R = params.R
-
-    @property
-    def p_up(self) -> float:
-        return calculate_up_state_prob(self.S_11, self.S_10, self.R, self.S_0)
-
-    @property
-    def p_down(self) -> float:
-        return calculate_down_state_prob(self.S_11, self.S_10, self.R, self.S_0)
+class ConstantPi(Constant, PiModel):
+    def __init__(self, value: float) -> None:
+        super().__init__(value=value)
 
 
-class TerminalPi(Pi):
-    """Risk Neutral probability model when the probability values are known"""
-
-    def __init__(self, params: TerminalPiParams) -> None:
-        self._p_up = params.p_up
-        self._p_down = params.p_down
-        super().__init__(R=params.R)
-
-    @property
-    def p_up(self) -> float:
-        return self._p_up
-
-    @property
-    def p_down(self) -> float:
-        return self._p_down
-
-
-@overload
-def pi_factory(params: BinomPiParams) -> BinomPi: ...
-@overload
-def pi_factory(params: CRRPiParams) -> CRRPi: ...
-@overload
-def pi_factory(params: TerminalPiParams) -> TerminalPi: ...
-def pi_factory(
-    params: BinomPiParams | CRRPiParams | TerminalPiParams,
-) -> BinomPi | CRRPi | TerminalPi:
-    """Factory method that returns a matching Pi model based on params
-
-    Args:
-        params (BinomPiParams | CRRPiParams | TerminalPiParams): params
-
-    Returns:
-        BinomPi | CRRPi | TerminalPi: matching risk neutral pi model
-    """
-    if isinstance(params, BinomPiParams):
-        return BinomPi(params)
-    if isinstance(params, CRRPiParams):
-        return CRRPi(params)
-    if isinstance(params, TerminalPiParams):
-        return TerminalPi(params)
-    raise ValueError("Unexpected param type")
-
-
-def get_pi_from_asset(pi_values: TerminalPiParams | None, asset: Asset | None, R: float) -> Pi:
-    """Helper method to get pi model based on either pi value or asset value
-
-    if pi values are provided, will return the TerminalPi model. Otherwise,
-    will calculate pi values based on the asset model.
-
-    Args:
-        pi_values (TerminalPiParams | None): known pi value - optional
-        asset (Asset | None): provided asset value - may not be known
-        R (float): interest return
-
-    Raises:
-        ValueError: if both pi_values and asset are None
-
-    Returns:
-        Pi: pi model
-    """
-    if pi_values:
-        return pi_factory(pi_values)
-    if not asset:
-        raise ValueError("Either asset or pi values must be provided")
-
-    return (
-        pi_factory(CRRPiParams(R=R, S_0=asset[0, 0], u=asset.u, d=asset.d))
-        if isinstance(asset, CRRAsset)
-        else pi_factory(
-            BinomPiParams(
-                R=R,
-                S_0=asset[0, 0],
-                S_11=asset[1, 1],
-                S_10=asset[1, 0],
+class VariablePi(PiModel):
+    def __init__(self, R: InterestRateModel, asset: AssetModel):
+        super().__init__(steps=asset.steps - 1)
+        for n in range(self.steps + 1):
+            self.set_state(
+                n,
+                [
+                    (R[n, j] * asset[n, j] - asset[n + 1, j]) / (asset[n + 1, j + 1] - asset[n + 1, j])
+                    for j in range(n + 1)
+                ],
             )
-        )
-    )
+
+
+class StatePi(PiModel):
+    def __init__(self, states: StateT, steps: int) -> None:
+        super().__init__(steps)
+        if 0 not in states:
+            raise ValueError("Asset Model requires current asset value at t=0")
+        for time, state in states.items():
+            self.set_state(time, state)
+
+
+def pi_factory(
+    value: float | None = None,
+    states: StateT | None = None,
+    steps: int | None = None,
+    asset: AssetModel | None = None,
+    R: InterestRateModel | None = None,
+) -> ConstantPi | VariablePi | StatePi:
+    if value:
+        return ConstantPi(value)
+    if states and steps:
+        return StatePi(states=states, steps=steps)
+    if isinstance(asset, CRRAsset) and isinstance(R, ConstantInterestRate):
+        pi = calculate_pi_CRR(asset.u, asset.d, R.value)
+        return ConstantPi(pi)
+    if asset and isinstance(R, ConstantInterestRate):
+        pi = calculate_pi(asset[1, 1], asset[1, 0], R.value, asset[0, 0])
+        return ConstantPi(pi)
+    if asset and R:
+        return VariablePi(R, asset)
+    raise ValueError("Expect at least value or states and steps or asset and R to be provided")
