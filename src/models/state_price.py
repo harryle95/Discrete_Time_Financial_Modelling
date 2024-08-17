@@ -9,6 +9,8 @@ __all__ = ("StatePrice", "TerminalStatePrice", "state_price_factory")
 
 
 class StatePrice(Indexable):
+    """Base state price model. State price values are determined from solving the Jamshidian's forward induction formula"""
+
     def __init__(self, steps: int) -> None:
         super().__init__(steps)
 
@@ -24,6 +26,8 @@ class StatePrice(Indexable):
 
 
 class TerminalStatePrice(StatePrice):
+    """State price model when terminal state prices are known"""
+
     def __init__(self, steps: int, state: TerminalParams) -> None:
         self.state = state
         super().__init__(steps)
@@ -37,6 +41,15 @@ def state_price_factory(steps: int, state: None = None) -> StatePrice: ...
 def state_price_factory(
     steps: int, state: TerminalParams | None = None
 ) -> StatePrice | TerminalStatePrice:
+    """Factory method that generates state price model based on input parameters
+
+    Args:
+        steps (int): number of steps in state price model
+        state (TerminalParams | None, optional): final state values - optional
+
+    Returns:
+        StatePrice | TerminalStatePrice: state price model
+    """
     if state:
         return TerminalStatePrice(steps, state)
     return StatePrice(steps)

@@ -8,19 +8,25 @@ __all__ = ("Pi", "CRRPi", "BinomPi", "TerminalPi", "pi_factory", "get_pi_from_as
 
 
 class Pi:
+    """Abstract Risk neutral probability Model under binomial assumption"""
+
     def __init__(self, R: float, **kwargs) -> None:
         self.R = R
 
     @property
     def p_up(self) -> float:
+        """Probability of achieving the upstate"""
         return NotImplemented
 
     @property
     def p_down(self) -> float:
+        """Probability of achieving the downstate"""
         return NotImplemented
 
 
 class CRRPi(Pi):
+    """Risk Neutral probability model under the CRR assumption"""
+
     def __init__(self, params: CRRPiParams) -> None:
         self.S_0 = params.S_0
         self.u = params.u
@@ -37,6 +43,8 @@ class CRRPi(Pi):
 
 
 class BinomPi(Pi):
+    """Risk Neutral probability model under the One-Step Binomial setting"""
+
     def __init__(self, params: BinomPiParams) -> None:
         self.S_0 = params.S_0
         self.S_11 = params.S_11
@@ -53,6 +61,8 @@ class BinomPi(Pi):
 
 
 class TerminalPi(Pi):
+    """Risk Neutral probability model when the probability values are known"""
+
     def __init__(self, params: TerminalPiParams) -> None:
         self._p_up = params.p_up
         self._p_down = params.p_down
@@ -76,6 +86,14 @@ def pi_factory(params: TerminalPiParams) -> TerminalPi: ...
 def pi_factory(
     params: BinomPiParams | CRRPiParams | TerminalPiParams,
 ) -> BinomPi | CRRPi | TerminalPi:
+    """Factory method that returns a matching Pi model based on params
+
+    Args:
+        params (BinomPiParams | CRRPiParams | TerminalPiParams): params
+
+    Returns:
+        BinomPi | CRRPi | TerminalPi: matching risk neutral pi model
+    """
     if isinstance(params, BinomPiParams):
         return BinomPi(params)
     if isinstance(params, CRRPiParams):
@@ -87,6 +105,22 @@ def pi_factory(
 def get_pi_from_asset(
     pi_values: TerminalPiParams | None, asset: Asset | None, R: float
 ) -> Pi:
+    """Helper method to get pi model based on either pi value or asset value
+
+    if pi values are provided, will return the TerminalPi model. Otherwise,
+    will calculate pi values based on the asset model.
+
+    Args:
+        pi_values (TerminalPiParams | None): known pi value - optional
+        asset (Asset | None): provided asset value - may not be known
+        R (float): interest return
+
+    Raises:
+        ValueError: if both pi_values and asset are None
+
+    Returns:
+        Pi: pi model
+    """
     if pi_values:
         return pi_factory(pi_values)
     else:

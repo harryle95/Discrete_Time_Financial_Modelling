@@ -5,19 +5,36 @@ __all__ = "Indexable"
 
 
 class Indexable:
+    """Mixin that provides indexing capability and a method to set terminal state"""
+
     def __init__(self, steps) -> None:
         self.steps = steps
         self.grid: list[list[float]] = [[] for _ in range(steps + 1)]
 
     @property
     def initial(self) -> float:
+        """Get initial state
+
+        Returns:
+            float: initial state value
+        """
         return self.grid[0][0]
 
     @property
     def final(self) -> Sequence[float]:
+        """Get final state values
+
+        Returns:
+            Sequence[float]: final state values
+        """
         return self.grid[-1]
 
     def set_terminal(self, state: Sequence[float]) -> None:
+        """Set terminal state values to `state`
+
+        Args:
+            state (Sequence[float]): final state values to set to
+        """
         self.grid[-1] = cast(list[float], state)
 
     @overload

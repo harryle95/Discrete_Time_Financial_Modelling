@@ -7,6 +7,8 @@ __all__ = ("Asset", "CRRAsset", "TerminalAsset", "asset_factory")
 
 
 class Asset(Indexable):
+    """Base Asset Model"""
+
     def __init__(self, S_0: float, steps: int) -> None:
         self.S_0 = S_0
         self.steps = steps
@@ -15,6 +17,8 @@ class Asset(Indexable):
 
 
 class CRRAsset(Asset):
+    """Asset Model under CRR assumption"""
+
     def __init__(self, params: CRRAssetParams) -> None:
         self.u = params.u
         self.d = params.d
@@ -30,6 +34,8 @@ class CRRAsset(Asset):
 
 
 class TerminalAsset(Asset):
+    """Asset model when terminal asset states are known"""
+
     def __init__(self, params: TerminalAssetParams) -> None:
         super().__init__(params.S_0, params.steps)
         self.set_terminal(params.V_T)
@@ -42,6 +48,14 @@ def asset_factory(params: TerminalAssetParams) -> TerminalAsset: ...
 def asset_factory(
     params: CRRAssetParams | TerminalAssetParams,
 ) -> CRRAsset | TerminalAsset:
+    """Factory method that returns an Asset class based on parameter type
+
+    Args:
+        params (CRRAssetParams | TerminalAssetParams): parameter type
+
+    Returns:
+        CRRAsset | TerminalAsset: matching Asset
+    """
     if isinstance(params, CRRAssetParams):
         return CRRAsset(params)
     if isinstance(params, TerminalAssetParams):
