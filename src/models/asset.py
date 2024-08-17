@@ -27,10 +27,7 @@ class CRRAsset(Asset):
 
     def compute_grid(self) -> None:
         for t in range(self.steps + 1):
-            self.grid[t] = [
-                self.S_0 * (self.u**index) * (self.d ** (t - index))
-                for index in range(t + 1)
-            ]
+            self.grid[t] = [self.S_0 * (self.u**index) * (self.d ** (t - index)) for index in range(t + 1)]
 
 
 class TerminalAsset(Asset):
@@ -60,3 +57,4 @@ def asset_factory(
         return CRRAsset(params)
     if isinstance(params, TerminalAssetParams):
         return TerminalAsset(params)
+    raise ValueError("Unexpected param type")

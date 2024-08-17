@@ -19,10 +19,7 @@ class StatePrice(Indexable):
         pi: Pi,
     ) -> None:
         for n in range(self.steps + 1):
-            self.grid[n] = [
-                comb(n, j) * (pi.p_up**j) * (pi.p_down ** (n - j)) / pi.R**n
-                for j in range(n + 1)
-            ]
+            self.grid[n] = [comb(n, j) * (pi.p_up**j) * (pi.p_down ** (n - j)) / pi.R**n for j in range(n + 1)]
 
 
 class TerminalStatePrice(StatePrice):
@@ -38,9 +35,7 @@ class TerminalStatePrice(StatePrice):
 def state_price_factory(steps: int, state: TerminalParams) -> TerminalStatePrice: ...
 @overload
 def state_price_factory(steps: int, state: None = None) -> StatePrice: ...
-def state_price_factory(
-    steps: int, state: TerminalParams | None = None
-) -> StatePrice | TerminalStatePrice:
+def state_price_factory(steps: int, state: TerminalParams | None = None) -> StatePrice | TerminalStatePrice:
     """Factory method that generates state price model based on input parameters
 
     Args:

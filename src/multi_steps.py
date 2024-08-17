@@ -10,6 +10,8 @@ from src.models import (
     state_price_factory,
 )
 
+__all__ = ("MultiStepModel",)
+
 
 class MultiStepModel:
     def __init__(
@@ -29,4 +31,4 @@ class MultiStepModel:
 
     @property
     def premium(self) -> float:
-        return sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1])])
+        return sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1], strict=True)])

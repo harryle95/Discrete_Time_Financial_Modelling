@@ -58,9 +58,9 @@ class BinomPiParams(PiParams):
 @dataclass
 class TerminalPiParams(PiParams):
     p_up: float
-    """Probability of an up sate in a binomial model"""
+    """Probability of an up state in a binomial model"""
     p_down: float
-    """Probability of a down sate in a binomial model"""
+    """Probability of a down state in a binomial model"""
 
 
 class Style(Enum):

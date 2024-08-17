@@ -1,13 +1,13 @@
 from collections.abc import Sequence
 from typing import cast, overload
 
-__all__ = "Indexable"
+__all__ = ("Indexable",)
 
 
 class Indexable:
     """Mixin that provides indexing capability and a method to set terminal state"""
 
-    def __init__(self, steps) -> None:
+    def __init__(self, steps: int) -> None:
         self.steps = steps
         self.grid: list[list[float]] = [[] for _ in range(steps + 1)]
 
@@ -43,9 +43,7 @@ class Indexable:
     def __getitem__(self, index: tuple[int, int]) -> float: ...
     @overload
     def __getitem__(self, index: slice) -> Sequence[Sequence[float]]: ...
-    def __getitem__(
-        self, index: int | tuple[int, int] | slice
-    ) -> float | Sequence[float] | Sequence[Sequence[float]]:
+    def __getitem__(self, index: int | tuple[int, int] | slice) -> float | Sequence[float] | Sequence[Sequence[float]]:
         if isinstance(index, int):
             return self.grid[index]
         if isinstance(index, tuple):
@@ -54,3 +52,4 @@ class Indexable:
             return self.grid[index[0]][index[1]]
         if isinstance(index, slice):
             return self.grid[index]
+        raise ValueError("Unsupported getitem index")

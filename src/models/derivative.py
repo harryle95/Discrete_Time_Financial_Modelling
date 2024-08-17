@@ -24,9 +24,7 @@ class BaseDerivative:
     def __init__(self, params: DerivativeParams) -> None:
         self.strike = params.strike
         self.expire = params.expire
-        self.style = (
-            params.style if isinstance(params.style, str) else params.style.value
-        )
+        self.style = params.style if isinstance(params.style, str) else params.style.value
         self.params = params
 
     def value(self, time: int, asset: float) -> float:
@@ -105,12 +103,7 @@ class Derivative(Indexable):
         """
         for step in range(self.expire - 1, -1, -1):
             self.grid[step] = [
-                1
-                / pi.R
-                * (
-                    pi.p_up * self.grid[step + 1][i + 1]
-                    + pi.p_down * self.grid[step + 1][i]
-                )
+                1 / pi.R * (pi.p_up * self.grid[step + 1][i + 1] + pi.p_down * self.grid[step + 1][i])
                 for i in range(step + 1)
             ]
 
@@ -137,14 +130,10 @@ class StandardDerivative(Derivative):
 
     def compute_terminal(self, asset: Asset | None) -> Sequence[float]:
         if asset:
-            term_value = [
-                self.derivative.value(self.expire, asset)
-                for asset in asset[self.expire]
-            ]
+            term_value = [self.derivative.value(self.expire, asset) for asset in asset[self.expire]]
             self.set_terminal(term_value)
             return term_value
-        else:
-            raise ValueError("Standard Derviative expects asset to be provided")
+        raise ValueError("Standard Derivative expects asset to be provided")
 
 
 class TerminalDerivative(Derivative):
@@ -171,3 +160,4 @@ def derivative_factory(
         return TerminalDerivative(params)
     if isinstance(params, DerivativeParams):
         return StandardDerivative(params)
+    raise ValueError(f"Unexpected params type: {type(params)}")

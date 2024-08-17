@@ -1,3 +1,6 @@
+__all__ = ("present_value", "put_call_parity")
+
+
 def present_value(future_value: float, R: float, T: float) -> float:
     """Calculate the present value based on future value, interest, and accumulating period
 
@@ -9,7 +12,7 @@ def present_value(future_value: float, R: float, T: float) -> float:
     Returns:
         float: present value
     """
-    return future_value / R**T
+    return float(future_value / R**T)
 
 
 def put_call_parity(asset: float, strike: float, R: float, T: float = 0) -> float:
@@ -76,8 +79,6 @@ def calculate_W_0_replicating(H0: float, H1: float, S_0: float) -> float:
     return H0 + H1 * S_0
 
 
-def calculate_W_0_general(
-    W_11: float, W_10: float, p_up: float, p_down: float, R: float
-) -> float:
+def calculate_W_0_general(W_11: float, W_10: float, p_up: float, p_down: float, R: float) -> float:
     """Calculate the option premium using the general pricing formula"""
     return 1 / R * (p_up * W_11 + p_down * W_10)

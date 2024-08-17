@@ -1,4 +1,4 @@
-from typing import overload
+from typing import Any, overload
 
 from src.helpers import calculate_down_state_prob, calculate_up_state_prob
 from src.models.asset import Asset, CRRAsset
@@ -10,7 +10,7 @@ __all__ = ("Pi", "CRRPi", "BinomPi", "TerminalPi", "pi_factory", "get_pi_from_as
 class Pi:
     """Abstract Risk neutral probability Model under binomial assumption"""
 
-    def __init__(self, R: float, **kwargs) -> None:
+    def __init__(self, R: float, **kwargs: Any) -> None:
         self.R = R
 
     @property
@@ -100,11 +100,10 @@ def pi_factory(
         return CRRPi(params)
     if isinstance(params, TerminalPiParams):
         return TerminalPi(params)
+    raise ValueError("Unexpected param type")
 
 
-def get_pi_from_asset(
-    pi_values: TerminalPiParams | None, asset: Asset | None, R: float
-) -> Pi:
+def get_pi_from_asset(pi_values: TerminalPiParams | None, asset: Asset | None, R: float) -> Pi:
     """Helper method to get pi model based on either pi value or asset value
 
     if pi values are provided, will return the TerminalPi model. Otherwise,
@@ -123,19 +122,18 @@ def get_pi_from_asset(
     """
     if pi_values:
         return pi_factory(pi_values)
-    else:
-        if not asset:
-            raise ValueError("Either asset or pi values must be provided")
+    if not asset:
+        raise ValueError("Either asset or pi values must be provided")
 
-        return (
-            pi_factory(CRRPiParams(R=R, S_0=asset[0, 0], u=asset.u, d=asset.d))
-            if isinstance(asset, CRRAsset)
-            else pi_factory(
-                BinomPiParams(
-                    R=R,
-                    S_0=asset[0, 0],
-                    S_11=asset[1, 1],
-                    S_10=asset[1, 0],
-                )
+    return (
+        pi_factory(CRRPiParams(R=R, S_0=asset[0, 0], u=asset.u, d=asset.d))
+        if isinstance(asset, CRRAsset)
+        else pi_factory(
+            BinomPiParams(
+                R=R,
+                S_0=asset[0, 0],
+                S_11=asset[1, 1],
+                S_10=asset[1, 0],
             )
         )
+    )
