@@ -72,9 +72,9 @@ def test_example_1_13() -> None:
     H0 = model.H0
     H1 = model.H1
     W0 = model.premium_replicating
-    assert H0 == pytest.approx(-7.2)
-    assert H1 == pytest.approx(2.25)
-    assert W0 == pytest.approx(4.05)
+    assert pytest.approx(-7.2) == H0
+    assert pytest.approx(2.25) == H1
+    assert pytest.approx(4.05) == W0
 
 
 def test_example_1_14() -> None:
@@ -92,9 +92,9 @@ def test_example_1_14() -> None:
     H0 = model.H0
     H1 = model.H1
     W0 = model.premium_replicating
-    assert H0 == pytest.approx(-5 / 3)
-    assert H1 == pytest.approx(2 / 3)
-    assert W0 == pytest.approx(1)
+    assert pytest.approx(-5 / 3) == H0
+    assert pytest.approx(2 / 3) == H1
+    assert pytest.approx(1) == W0
 
 
 def test_example_1_18() -> None:
@@ -114,7 +114,7 @@ def test_example_1_18() -> None:
     W0 = model.premium
     assert p_up == pytest.approx(1 / 2, 1e-3)
     assert p_down == pytest.approx(1 / 2, 1e-3)
-    assert W0 == pytest.approx(4.05)
+    assert pytest.approx(4.05) == W0
 
 
 def test_workshop_2_1() -> None:
@@ -139,8 +139,8 @@ def test_workshop_2_1() -> None:
     call_p_up = call_model.pi.p_up
     call_p_down = call_model.pi.p_down
 
-    assert H0 == pytest.approx(-8 / 15)
-    assert H1 == pytest.approx(1 / 3)
+    assert pytest.approx(-8 / 15) == H0
+    assert pytest.approx(1 / 3) == H1
     assert C_0_replicate == pytest.approx(0.8)
 
     assert call_p_up == pytest.approx(1 / 2)
@@ -158,7 +158,7 @@ def test_workshop_2_1() -> None:
     put_p_down = put_model.pi.p_down
     assert put_p_up == pytest.approx(1 / 2)
     assert put_p_down == pytest.approx(1 / 2)
-    assert P_0 == pytest.approx(1.6)
+    assert pytest.approx(1.6) == P_0
 
     # Parity
     actual = C_0_general - P_0
@@ -167,17 +167,15 @@ def test_workshop_2_1() -> None:
     assert expected == pytest.approx(-0.8)
 
 
-@pytest.mark.parametrize(
-    "W_11, S_11, W_10, S_10, R, T, H0, H1", [(0, 50, 5, 10, 1.25, 1, 5, -0.125)]
-)
+@pytest.mark.parametrize("W_11, S_11, W_10, S_10, R, T, H0, H1", [(0, 50, 5, 10, 1.25, 1, 5, -0.125)])
 def test_quiz_2_1(W_11, S_11, W_10, S_10, R, T, H0, H1) -> None:
     model = OneStepModel(
         asset_params=TerminalAssetParams(V_T=[S_10, S_11], steps=T, S_0=0),
         derivative_params=TerminalDerivativeParams(V_T=[W_10, W_11], expire=T),
         R=R,
     )
-    assert model.H0 == pytest.approx(H0)
-    assert model.H1 == pytest.approx(H1)
+    assert pytest.approx(H0) == model.H0
+    assert pytest.approx(H1) == model.H1
 
 
 def test_quiz_2_2() -> None:
@@ -244,13 +242,11 @@ def test_quiz_2_6(K, S_11, S_10, R, pi, T, premium) -> None:
     assert model.premium == pytest.approx(premium, 1e-3)
 
 
-@pytest.mark.parametrize(
-    "K, C_0, S_0, R, premium", [(32, 2, 26, 1.02, 7.373), (34, 2.65, 27, 1.08, 7.131)]
-)
+@pytest.mark.parametrize("K, C_0, S_0, R, premium", [(32, 2, 26, 1.02, 7.373), (34, 2.65, 27, 1.08, 7.131)])
 def test_quiz_2_7(K, C_0, S_0, R, premium) -> None:
     parity = put_call_parity(S_0, K, R, 1)
     P_0 = C_0 - parity
-    assert P_0 == pytest.approx(premium, 1e-3)
+    assert pytest.approx(premium, 1e-3) == P_0
 
 
 @pytest.mark.parametrize(
@@ -282,7 +278,7 @@ def test_quiz_2_10(W_0, S_0, W_11, W_10, S_11, S_10, N, R, H1) -> None:
         R=R,
     )
     H1 = model.H1
-    assert H1 == pytest.approx(H1, 1)
+    assert pytest.approx(H1, 1) == H1
 
 
 @pytest.mark.parametrize(
@@ -321,9 +317,7 @@ def test_example_2_3() -> None:
     steps = 3
     expire = 3
 
-    model = MultiStepModel(
-        CRRAssetParams(S, u, d, steps), DerivativeParams(K, expire, type="call"), R
-    )
+    model = MultiStepModel(CRRAssetParams(S, u, d, steps), DerivativeParams(K, expire, type="call"), R)
     derivative = model.derivative
     np.testing.assert_almost_equal(derivative[0], [2.816])
     np.testing.assert_almost_equal(derivative[1], [0.8, 6.24])
@@ -339,13 +333,9 @@ def test_example_2_4() -> None:
     R = 5 / 4
     steps = 3
     expire = 3
-    model = MultiStepModel(
-        CRRAssetParams(S, u, d, steps), DerivativeParams(K, expire, type="call"), R
-    )
+    model = MultiStepModel(CRRAssetParams(S, u, d, steps), DerivativeParams(K, expire, type="call"), R)
     derivative = model.derivative
-    np.testing.assert_almost_equal(
-        model.state_price[3], [8 / 125, 24 / 125, 24 / 125, 8 / 125]
-    )
+    np.testing.assert_almost_equal(model.state_price[3], [8 / 125, 24 / 125, 24 / 125, 8 / 125])
     np.testing.assert_almost_equal(model.premium, derivative[0, 0])
 
 
@@ -371,9 +361,7 @@ def test_workshop_3_1() -> None:
     call_premium = call_model.premium
     np.testing.assert_almost_equal(put_premium, 1.8202, 4)
     np.testing.assert_almost_equal(call_premium, 0.9986, 4)
-    np.testing.assert_approx_equal(
-        put_call_parity(S, K, R, T), call_premium - put_premium
-    )
+    np.testing.assert_approx_equal(put_call_parity(S, K, R, T), call_premium - put_premium)
 
 
 def test_workshop_3_2() -> None:
@@ -407,9 +395,7 @@ def test_workshop_3_2() -> None:
     np.testing.assert_almost_equal(put_model.derivative[0, 0], 0.4793, 4)
 
 
-@pytest.mark.parametrize(
-    "S, u, d, T, largest, smallest", [(12, 1.2, 0.9, 3, 20.736, 8.748)]
-)
+@pytest.mark.parametrize("S, u, d, T, largest, smallest", [(12, 1.2, 0.9, 3, 20.736, 8.748)])
 def test_quiz_3_3(S, u, d, T, largest, smallest) -> None:
     asset = asset_factory(CRRAssetParams(S, u, d, T))
     np.testing.assert_almost_equal(asset[T, T], largest)
@@ -430,9 +416,7 @@ def test_quiz_3_4(C, pi, R, T, premium) -> None:
     np.testing.assert_almost_equal(model.premium, premium, 4)
 
 
-@pytest.mark.parametrize(
-    "K, T, asset, put", [(30, 3, [10, 15, 25, 35], [20, 15, 5, 0])]
-)
+@pytest.mark.parametrize("K, T, asset, put", [(30, 3, [10, 15, 25, 35], [20, 15, 5, 0])])
 def test_quiz_3_5(K, T, asset, put) -> None:
     asset = asset_factory(TerminalAssetParams(asset, T, 0))
     derivative = derivative_factory(DerivativeParams(K, T, type="put"))
@@ -440,9 +424,7 @@ def test_quiz_3_5(K, T, asset, put) -> None:
     np.testing.assert_almost_equal(result, put)
 
 
-@pytest.mark.parametrize(
-    "R, state_22, result", [(1.2, 0.27, 0.0984), (1.3, 0.12, 0.1788)]
-)
+@pytest.mark.parametrize("R, state_22, result", [(1.2, 0.27, 0.0984), (1.3, 0.12, 0.1788)])
 def test_quiz_3_6(R, state_22, result):
     pi = np.sqrt(state_22 * R**2)
     pi_down = 1 - pi
@@ -480,9 +462,7 @@ def test_quiz_3_8(derivative, state_price, premium):
 )
 def test_quiz_3_9(K, T, S, u, R, premium):
     d = 1 / u
-    model = MultiStepModel(
-        CRRAssetParams(S, u, d, T), DerivativeParams(K, T, type="call"), R=R
-    )
+    model = MultiStepModel(CRRAssetParams(S, u, d, T), DerivativeParams(K, T, type="call"), R=R)
     np.testing.assert_almost_equal(model.premium, premium, 3)
 
 
@@ -492,7 +472,5 @@ def test_quiz_3_9(K, T, S, u, R, premium):
 )
 def test_quiz_3_10(K, T, S, u, R, premium):
     d = 1 / u
-    model = MultiStepModel(
-        CRRAssetParams(S, u, d, T), DerivativeParams(K, T, type="put"), R=R
-    )
+    model = MultiStepModel(CRRAssetParams(S, u, d, T), DerivativeParams(K, T, type="put"), R=R)
     np.testing.assert_almost_equal(model.premium, premium, 3)
