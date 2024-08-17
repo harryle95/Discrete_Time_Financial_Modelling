@@ -123,6 +123,3 @@ test-all: test test-examples 						## Run all tests
 
 .PHONY: check-all
 check-all: lint test-all coverage                   ## Run all linting, tests, and coverage checks
-
-
-

@@ -3,7 +3,12 @@ name = "discrete_time_financial_modelling"
 version = "0.1.0"
 description = "Default template for PDM package"
 authors = [{ name = "harryle", email = "lehoangsonsg@gmail.com" }]
-dependencies = ["matplotlib>=3.9.2", "numpy>=2.0.1"]
+dependencies = [
+    "matplotlib>=3.9.2",
+    "numpy>=2.0.1",
+    "ipykernel>=6.29.5",
+    "scipy>=1.14.0",
+]
 requires-python = "==3.11.*"
 readme = "README.md"
 license = { text = "MIT" }
@@ -24,7 +29,7 @@ analysis = [
 
 
 [tool.mypy]
-packages = ["src"]
+packages = ["src", "tests"]
 python_version = "3.11"
 
 disallow_any_generics = false
@@ -104,10 +109,10 @@ lint.ignore = [
     "A002",    # Argument id shadowing scope id
     "N802",    # Ruff - ignore upper cased method and variable
     "N803",    # Ruff - ignore upper cased method and variable
+    "N806",    # Ruff - ignore upper cased method and variable
 ]
 
-src = ["src"]
-exclude = ["tests"]
+src = ["src", "tests"]
 target-version = "py311"
 
 [tool.ruff.lint.pydocstyle]
