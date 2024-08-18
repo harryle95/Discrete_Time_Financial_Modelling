@@ -2,8 +2,8 @@ from math import exp, log, sqrt
 from statistics import NormalDist
 from typing import Literal, cast
 
-import scipy  # type: ignore
-import scipy.optimize  # type: ignore
+import scipy  # type: ignore[import-untyped]
+import scipy.optimize  # type: ignore[import-untyped]
 
 __all__ = (
     "calculate_BS_CRR_factor",

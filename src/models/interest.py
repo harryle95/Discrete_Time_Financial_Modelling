@@ -1,6 +1,13 @@
 from src.models.base import StateT
 from src.models.indexable import Constant, Indexable
 
+__all__ = (
+    "ConstantInterestRate",
+    "InterestRateModel",
+    "VariableInterestRate",
+    "interest_factory",
+)
+
 
 class InterestRateModel(Indexable): ...
 

@@ -621,8 +621,6 @@ def test_workshop_4_1() -> None:
     assert_approx_equal(put_BS, 0.2975, 4)
 
     N = 6
-    u_6, d_6 = calculate_BS_CRR_factor(sigma, T_year, N)
-    R_6 = calculate_BS_R(r, T_year, N)
 
 
 def test_workshop_4_2() -> None:
