@@ -172,8 +172,12 @@ def calculate_BS_R(r: float, T: float, N: float) -> float:
     return exp(r * T / N)
 
 
-def calculate_BS_r(R: float, T: float) -> float:
-    return log(R) / T
+def calculate_BS_r_from_R(R: float, N: int, T: float) -> float:
+    return log(R**N) / T
+
+
+def calculate_BS_sigma_from_u(u: float, T: float, N: int) -> float:
+    return log(u) * sqrt(N / T)
 
 
 def calculate_BS_sigma(

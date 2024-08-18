@@ -10,8 +10,9 @@ from src.helpers import (
     calculate_BS_CRR_factor,
     calculate_BS_Put,
     calculate_BS_R,
-    calculate_BS_r,
+    calculate_BS_r_from_R,
     calculate_BS_sigma,
+    calculate_BS_sigma_from_u,
     present_value,
     put_call_parity,
 )
@@ -514,7 +515,7 @@ def test_example_2_11() -> None:
     T = 0.21
     R = 1.045
     C = 1.660
-    r = calculate_BS_r(R, 1)
+    r = calculate_BS_r_from_R(R, 1, 1)
 
     sigma = calculate_BS_sigma(S, K, T, r, C, "call", [1e-6, 3.0])
     assert_almost_equal(sigma, 0.2358, 4)
@@ -595,3 +596,110 @@ def test_seminar_4_2() -> None:
     R = calculate_BS_R(r_day, T_day, expire)
     put_model = Solver(expire=expire, strike=K, S=20, u=u, d=d, type="put", interest_value=R)
     assert_almost_equal(put_model.premium, 6.458, 3)
+
+
+def test_workshop_4_1() -> None:
+    K = 5
+    S = 4
+    u = 1.3
+    d = 1 / u
+    T_year = 2
+    N = 8
+    R = 1.1
+
+    call = Solver(strike=K, S=S, u=u, d=d, expire=N, interest_value=R, type="call")
+    assert_approx_equal(call.premium, 1.9568, 4)
+    put = Solver(strike=K, S=S, u=u, d=d, expire=N, interest_value=R, type="put")
+    assert_approx_equal(put.premium, 0.2894, 4)
+    assert_approx_equal(put_call_parity(S, K, R, N), call.premium - put.premium)
+    sigma = calculate_BS_sigma_from_u(u, T_year, N)
+    assert_approx_equal(sigma, 0.5247, 4)
+    r = calculate_BS_r_from_R(R, N, T_year)
+    call_BS = calculate_BS_Call(S, K, r, T_year, sigma)
+    assert_approx_equal(call_BS, 1.9650, 4)
+    put_BS = calculate_BS_Put(S, K, r, T_year, sigma)
+    assert_approx_equal(put_BS, 0.2975, 4)
+
+    N = 6
+    u_6, d_6 = calculate_BS_CRR_factor(sigma, T_year, N)
+    R_6 = calculate_BS_R(r, T_year, N)
+
+
+def test_workshop_4_2() -> None:
+    K = 11
+    S = 10
+    u = 1.2
+    d = 1 / u
+    T = 3
+    R_states = {0: [1.02], 1: [1.03, 1.01], 2: [1.05, 1.02, 1.005]}
+    call = Solver(expire=T, S=S, u=u, d=d, strike=K, type="call", interest_states=R_states)
+    assert_almost_equal(call.premium, 1.0755, 4)
+    put = Solver(expire=T, S=S, u=u, d=d, strike=K, type="put", interest_states=R_states)
+    assert_approx_equal(put.premium, 1.4154, 4)
+    pi = [[0.5091], [0.5364, 0.4818], [0.5909, 0.5091, 0.4682]]
+    for i in range(T):
+        assert_almost_equal(call.pi[i], pi[i], 4)
+
+
+@pytest.mark.parametrize("sigma_year, sigma_month_pc", [(0.17, 4.907), (0.29, 8.372)])
+def test_quiz_4_3(sigma_year: float, sigma_month_pc: float) -> None:
+    sigma_month = sigma_year / math.sqrt(12)
+    assert_almost_equal(sigma_month * 100, sigma_month_pc, 3)
+
+
+@pytest.mark.parametrize("sigma_month, N, T_month, u_exp", [(0.16, 6, 12, 1.254), (0.20, 6, 12, 1.327)])
+def test_quiz_4_4(sigma_month: float, N: int, T_month: int, u_exp: float) -> None:
+    u, d = calculate_BS_CRR_factor(sigma_month, T_month, N)
+    assert_almost_equal(u, u_exp, 3)
+
+
+@pytest.mark.parametrize(
+    "S, K, T_year, r, sigma_year, call_exp", [(15, 10, 1, 0.03, 0.11, 5.296), (13, 11, 1, 0.03, 0.11, 2.344)]
+)
+def test_quiz_4_5(S: float, K: float, T_year: int, r: float, sigma_year: float, call_exp: float) -> None:
+    C = calculate_BS_Call(S=S, K=K, r=r, T=T_year, sigma=sigma_year)
+    assert_almost_equal(C, call_exp, 3)
+
+
+@pytest.mark.parametrize(
+    "K, T_month, S, sigma_month, r_month, put_exp", [(57, 4, 50, 0.26, 0.05, 8.334), (57, 4, 50, 0.26, 0.05, 8.334)]
+)
+def test_quiz_4_6(K: float, T_month: int, S: float, sigma_month: float, r_month: float, put_exp: float) -> None:
+    P = calculate_BS_Put(S=S, K=K, r=r_month, T=T_month, sigma=sigma_month)
+    assert_almost_equal(P, put_exp, 3)
+
+
+@pytest.mark.parametrize("r_year, T_month, R_exp", [(0.06, 3, 1.015), (0.07, 3, 1.018)])
+def test_quiz_4_7(r_year: float, T_month: int, R_exp: float) -> None:
+    r_month = r_year / 12
+    R = calculate_BS_R(r_month, T_month, 1)
+    assert_almost_equal(R, R_exp, 3)
+
+
+@pytest.mark.parametrize("P, K, S, r, C_exp", [(2.24, 24, 27, 0.05, 6.410), (2.04, 24, 26, 0.05, 5.210)])
+def test_quiz_4_8(P: float, K: float, S: float, r: float, C_exp: float) -> None:
+    parity = put_call_parity(S, K, np.exp(r), 1)
+    C = P + parity
+    assert_almost_equal(C, C_exp, 2)
+
+
+@pytest.mark.parametrize(
+    "K, T_month, S, sigma_year, r_year, call_exp", [(33, 8, 37, 0.34, 0.04, 6.728), (35, 8, 36, 0.31, 0.06, 4.818)]
+)
+def test_quiz_4_9(K: float, T_month: int, S: float, sigma_year: float, r_year: float, call_exp: float) -> None:
+    r_month = r_year / 12
+    sigma_month = sigma_year / np.sqrt(12)
+    call = calculate_BS_Call(S, K, r_month, T_month, sigma_month)
+    assert_almost_equal(call, call_exp, 2)
+    T_year = T_month / 12
+    call = calculate_BS_Call(S, K, r_year, T_year, sigma_year)
+    assert_almost_equal(call, call_exp, 3)
+
+
+@pytest.mark.parametrize("value, result", [(0.5, 0.6916), (0.15, 0.5597)])
+def test_quiz_4_10(value: float, result: float) -> None:
+    def approx(x: float) -> float:
+        return float(1 / (1 + np.exp(-0.07056 * (x**3) - 1.5976 * x)))
+
+    actual = approx(value)
+    assert_almost_equal(actual, result, 4)
