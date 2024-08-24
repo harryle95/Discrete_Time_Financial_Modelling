@@ -16,14 +16,7 @@ from src.helpers import (
     present_value,
     put_call_parity,
 )
-from src.models import (
-    OptionType,
-    asset_factory,
-    base_derivative_factory,
-    derivative_factory,
-    interest_factory,
-    pi_factory,
-)
+from src.models import BaseDerivative, DerivativeModel, OptionType, asset_factory, interest_factory, pi_factory
 from src.solver import OneStepSolver, Solver
 
 
@@ -41,7 +34,7 @@ def test_quiz_1_7(
     exp_value: float,
 ) -> None:
     T = 1
-    W = base_derivative_factory(strike=strike, expire=T, type=type)
+    W = BaseDerivative(strike=strike, expire=T, type=type)
     value = W.value(T, asset)
     assert_approx_equal(value, exp_value)
 
@@ -53,7 +46,7 @@ def test_quiz_1_9() -> None:
     T = 1
     R = 1.03
     S_1 = 7
-    W = base_derivative_factory(strike=K, expire=T, type="put")
+    W = BaseDerivative(strike=K, expire=T, type="put")
     value = W.value(T, S_1)
     assert_approx_equal((value - P_0 * R) * N, 548.59)
 
@@ -65,7 +58,7 @@ def test_quiz_1_10() -> None:
     T = 1
     R = 1.03
     S_1 = 36
-    W = base_derivative_factory(strike=K, expire=T, type="call")
+    W = BaseDerivative(strike=K, expire=T, type="call")
     value = W.value(T, S_1)
     profit = C_0 * N * R - N * value
     assert_approx_equal(profit, 56.65)
@@ -394,7 +387,7 @@ def test_quiz_3_5(K: float, T: int, asset: Sequence[float], put: float) -> None:
     asset_model = asset_factory(states={0: [0], T: asset}, steps=T)
     pi = pi_factory(value=0.1)
     R = interest_factory(value=0.1)
-    derivative = derivative_factory(expire=T, strike=K, type="put", pi=pi, R=R, asset=asset_model)
+    derivative = DerivativeModel(expire=T, strike=K, type="put", pi=pi, R=R, asset=asset_model)
     assert_almost_equal(derivative.final, put)
 
 
@@ -701,3 +694,5 @@ def test_quiz_4_10(value: float, result: float) -> None:
 
     actual = approx(value)
     assert_almost_equal(actual, result, 4)
+
+

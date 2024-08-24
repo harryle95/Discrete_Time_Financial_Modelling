@@ -1,10 +1,11 @@
 from src.helpers import calculate_H0, calculate_H1, calculate_W_0_general, calculate_W_0_replicating
 from src.models import (
+    DerivativeModel,
+    OptionStyle,
     OptionType,
     StatePriceModel,
     StateT,
     asset_factory,
-    derivative_factory,
     interest_factory,
     pi_factory,
 )
@@ -21,8 +22,9 @@ class Solver:
         d: float | None = None,
         asset_states: StateT | None = None,
         derivative_states: StateT | None = None,
-        strike: float | None = None,
-        type: OptionType | None = None,
+        strike: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
         interest_value: float | None = None,
         interest_states: StateT | None = None,
         pi_value: float | None = None,
@@ -32,8 +34,15 @@ class Solver:
         self.asset = asset_factory(steps=expire, S=S, u=u, d=d, states=asset_states)
         self.R = interest_factory(value=interest_value, states=interest_states, steps=expire)
         self.pi = pi_factory(value=pi_value, states=pi_states, steps=expire, asset=self.asset, R=self.R)
-        self.derivative = derivative_factory(
-            expire=expire, pi=self.pi, R=self.R, states=derivative_states, strike=strike, type=type, asset=self.asset
+        self.derivative = DerivativeModel(
+            expire=expire,
+            pi=self.pi,
+            R=self.R,
+            states=derivative_states,
+            strike=strike,
+            type=type,
+            asset=self.asset,
+            style=style,
         )
 
     @property
