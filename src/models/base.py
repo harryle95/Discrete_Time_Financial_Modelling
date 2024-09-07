@@ -15,5 +15,13 @@ class _OptionType(Enum):
     CALL = "call"
 
 
+class _BarrierType(Enum):
+    UP_IN = "up and in"
+    UP_OUT = "up and out"
+    DOWN_IN = "down and in"
+    DOWN_OUT = "down and out"
+
+
 OptionType = _OptionType | Literal["put", "call"]
 OptionStyle = _OptionStyle | Literal["european", "american"]
+BarrierType = _BarrierType | Literal["up and in", "up and out", "down and in", "down and out"]
