@@ -1,5 +1,6 @@
 import math
 from collections.abc import Sequence
+from typing import cast
 
 import numpy as np
 import pytest
@@ -16,7 +17,15 @@ from src.helpers import (
     present_value,
     put_call_parity,
 )
-from src.models import BaseDerivative, DerivativeModel, OptionType, asset_factory, interest_factory, pi_factory
+from src.models import (
+    BaseDerivative,
+    ConstantPi,
+    DerivativeModel,
+    OptionType,
+    asset_factory,
+    interest_factory,
+    pi_factory,
+)
 from src.solver import OneStepSolver, Solver
 
 
@@ -696,3 +705,104 @@ def test_quiz_4_10(value: float, result: float) -> None:
     assert_almost_equal(actual, result, 4)
 
 
+def test_example_3_1() -> None:
+    strike = 80
+    S = 80
+    u = 1.1
+    d = 0.95
+    R = 1.05
+    N = 2
+    eu_solver = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="european", strike=strike)
+    american_solver = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="american", strike=strike)
+    assert cast(ConstantPi, eu_solver.pi).value == 2 / 3
+    assert cast(ConstantPi, american_solver.pi).value == 2 / 3
+
+    # Check t = 2
+    assert_almost_equal(eu_solver.derivative[2], [0, 3.6, 16.8])
+    assert_almost_equal(american_solver.derivative[2], [0, 3.6, 16.8])
+
+    # Check t = 1
+    assert_almost_equal(eu_solver.derivative[1], [2.29, 11.81], 2)
+    assert_almost_equal(american_solver.derivative[1], [2.29, 11.81], 2)
+
+    # Check t = 0
+    assert_almost_equal(eu_solver.derivative[0], [8.22], 2)
+    assert_almost_equal(american_solver.derivative[0], [8.22], 2)
+
+
+def test_example_3_2() -> None:
+    strike = 35
+    S = 32
+    sigma = 0.4
+    r = 0.04
+    T = 0.5
+    N = 10
+    u = math.exp(sigma * math.sqrt(T / N))
+    d = 1 / u
+    R = math.exp(r * T / N)
+
+    # Get solver obj
+    eu_call = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="european", strike=strike)
+    eu_put = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="put", style="european", strike=strike)
+    us_call = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="american", strike=strike)
+    us_put = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="put", style="american", strike=strike)
+
+    # Check values
+    eu_call_derivative = {
+        10: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.268279479, 10.76441295, 19.72891703, 30.44942164, 43.26989872],
+        9: [0.0, 0.0, 0.0, 0.0, 0.0, 1.594443708, 6.918769276, 15.11627616, 24.91954129, 36.6431066],
+        8: [0.0, 0.0, 0.0, 0.0, 0.7778559806, 4.188752334, 10.90413332, 19.8686374, 30.58914201],
+        7: [0.0, 0.0, 0.0, 0.3794802685, 2.440321766, 7.456509686, 15.25571737, 25.0589825],
+        6: [0.0, 0.0, 0.185131024, 1.384112144, 4.882614095, 11.24648741, 20.00780001],
+        5: [0.0, 0.09031693839, 0.7696890475, 3.088105383, 7.977500633, 15.49825962],
+        4: [0.04406149324, 0.4215709881, 1.899200239, 5.46724711, 11.63059506],
+        3: [0.2281430322, 1.141596251, 3.636092109, 8.463138422],
+        2: [0.6733191463, 2.356265498, 5.98372177],
+        1: [1.493006216, 4.121227274],
+        0: [2.772211739],
+    }
+    eu_put_derivative = {
+        10: [21.91706497, 19.3543308, 16.28959871, 12.62453544, 8.241545898, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        9: [20.62303414, 17.82051855, 14.46903574, 10.46105196, 5.667969358, 1.530443545, 0.0, 0.0, 0.0, 0.0],
+        8: [19.21461043, 16.14987833, 12.48481507, 8.101825525, 3.638135608, 0.7807524815, 0.0, 0.0, 0.0],
+        7: [17.68107734, 14.32959453, 10.32161075, 5.908008415, 2.236880391, 0.3982991985, 0.0, 0.0],
+        6: [16.01071572, 12.34565246, 8.147793941, 4.105229163, 1.335451635, 0.2031914791, 0.0],
+        5: [14.19070997, 10.27304313, 6.159332633, 2.745779447, 0.7804055847, 0.1036576959],
+        4: [12.25110688, 8.245626836, 4.481710189, 1.781477581, 0.448692067],
+        3: [10.27253909, 6.392909705, 3.155436041, 1.127713242],
+        2: [8.359321246, 4.8007217, 2.159898492],
+        1: [6.606541753, 3.502793289],
+        0: [5.079165304],
+    }
+    us_call_derivative = {
+        10: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 3.268279479, 10.76441295, 19.72891703, 30.44942164, 43.26989872],
+        9: [0.0, 0.0, 0.0, 0.0, 0.0, 1.594443708, 6.918769276, 15.11627616, 24.91954129, 36.6431066],
+        8: [0.0, 0.0, 0.0, 0.0, 0.7778559806, 4.188752334, 10.90413332, 19.8686374, 30.58914201],
+        7: [0.0, 0.0, 0.0, 0.3794802685, 2.440321766, 7.456509686, 15.25571737, 25.0589825],
+        6: [0.0, 0.0, 0.185131024, 1.384112144, 4.882614095, 11.24648741, 20.00780001],
+        5: [0.0, 0.09031693839, 0.7696890475, 3.088105383, 7.977500633, 15.49825962],
+        4: [0.04406149324, 0.4215709881, 1.899200239, 5.46724711, 11.63059506],
+        3: [0.2281430322, 1.141596251, 3.636092109, 8.463138422],
+        2: [0.6733191463, 2.356265498, 5.98372177],
+        1: [1.493006216, 4.121227274],
+        0: [2.772211739],
+    }
+    us_put_derivative = {
+        10: [21.91706497, 19.3543308, 16.28959871, 12.62453544, 8.241545898, 3.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        9: [20.69296419, 17.8904486, 14.53896579, 10.53098201, 5.737899405, 1.530443545, 0.0, 0.0, 0.0, 0.0],
+        8: [19.3543308, 16.28959871, 12.62453544, 8.241545898, 3.67381027, 0.7807524815, 0.0, 0.0, 0.0],
+        7: [17.8904486, 14.53896579, 10.53098201, 5.996690495, 2.255079743, 0.3982991985, 0.0, 0.0],
+        6: [16.28959871, 12.62453544, 8.297868159, 4.159348765, 1.344735996, 0.2031914791, 0.0],
+        5: [14.53896579, 10.53098201, 6.262295145, 2.77791786, 0.7851419813, 0.1036576959],
+        4: [12.62453544, 8.42744449, 4.549915151, 1.800183593, 0.4511083295],
+        3: [10.55174336, 6.518937664, 3.199356462, 1.138434857],
+        2: [8.563239967, 4.886441351, 2.187534985],
+        1: [6.752389137, 3.560005563],
+        0: [5.181480278],
+    }
+
+    for i in range(N):
+        assert_almost_equal(eu_call.derivative[i], eu_call_derivative[i], 6)
+        assert_almost_equal(eu_put.derivative[i], eu_put_derivative[i], 6)
+        assert_almost_equal(us_call.derivative[i], us_call_derivative[i], 6)
+        assert_almost_equal(us_put.derivative[i], us_put_derivative[i], 6)
