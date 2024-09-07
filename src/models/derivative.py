@@ -40,6 +40,10 @@ class DerivativeModel(Indexable):
         self.compute_terminal()
         self.compute_european() if self.style == "european" else self.compute_american()
 
+    @property
+    def premium(self) -> float:
+        return self[0, 0]
+
     def compute_terminal(self) -> None:
         if self.states:
             self.set_state(self.expire, self.states[self.expire])

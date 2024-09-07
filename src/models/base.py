@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Literal
 
-StateT = Mapping[int, Sequence[float]]
+StateT = Mapping[int, Sequence[float | int]]
 
 
 class _OptionStyle(Enum):

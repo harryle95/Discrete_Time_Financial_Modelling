@@ -35,25 +35,24 @@ class VariablePi(PiModel):
 
 
 class StatePi(PiModel):
-    def __init__(self, states: StateT, steps: int) -> None:
+    def __init__(self, pi: StateT, steps: int) -> None:
         super().__init__(steps)
-        if 0 not in states:
+        if 0 not in pi:
             raise ValueError("Asset Model requires current asset value at t=0")
-        for time, state in states.items():
+        for time, state in pi.items():
             self.set_state(time, state)
 
 
 def pi_factory(
-    value: float | None = None,
-    states: StateT | None = None,
+    pi: float | StateT | None = None,
     steps: int | None = None,
     asset: AssetModel | None = None,
     R: InterestRateModel | None = None,
 ) -> ConstantPi | VariablePi | StatePi:
-    if value:
-        return ConstantPi(value)
-    if states and steps:
-        return StatePi(states=states, steps=steps)
+    if isinstance(pi, float):
+        return ConstantPi(pi)
+    if isinstance(pi, dict) and steps:
+        return StatePi(pi=pi, steps=steps)
     if isinstance(asset, CRRAsset) and isinstance(R, ConstantInterestRate):
         pi = calculate_pi_CRR(asset.u, asset.d, R.value)
         return ConstantPi(pi)

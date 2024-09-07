@@ -1,3 +1,7 @@
+from __future__ import annotations
+
+from typing import Any, overload
+
 from src.helpers import calculate_H0, calculate_H1, calculate_W_0_general, calculate_W_0_replicating
 from src.models import (
     DerivativeModel,
@@ -14,32 +18,80 @@ __all__ = ("Solver", "OneStepSolver")
 
 
 class Solver:
-    def __init__(
-        self,
+    @overload
+    @classmethod
+    def init(
+        cls,
+        *,
         expire: int,
-        S: float | None = None,
-        u: float | None = None,
-        d: float | None = None,
-        asset_states: StateT | None = None,
-        derivative_states: StateT | None = None,
-        strike: float = 0,
+        S: float | int,
+        u: float,
+        d: float,
+        W: StateT | None = None,
+        K: float = 0,
         type: OptionType = "call",
         style: OptionStyle = "european",
-        interest_value: float | None = None,
-        interest_states: StateT | None = None,
-        pi_value: float | None = None,
-        pi_states: StateT | None = None,
+        R: float | StateT = 1.0,
+        **kwargs: Any,
+    ) -> Solver: ...
+    @overload
+    @classmethod
+    def init(
+        cls,
+        *,
+        expire: int,
+        S: StateT,
+        pi: float | StateT,
+        W: StateT | None = None,
+        K: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: float | StateT = 1.0,
+        **kwargs: Any,
+    ) -> Solver: ...
+    @classmethod
+    def init(
+        cls,
+        *,
+        expire: int,
+        S: float | int | StateT,
+        u: float | None = None,
+        d: float | None = None,
+        W: StateT | None = None,
+        K: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: float | StateT = 1.0,
+        pi: float | StateT | None = None,
+        **kwargs: Any,
+    ) -> Solver:
+        return cls(expire=expire, S=S, u=u, d=d, W=W, K=K, type=type, style=style, R=R, pi=pi, **kwargs)
+
+    def __init__(
+        self,
+        *,
+        expire: int,
+        S: float | int | StateT,
+        u: float | None = None,
+        d: float | None = None,
+        W: StateT | None = None,
+        K: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: float | StateT = 1.0,
+        pi: float | StateT | None = None,
+        **kwargs: Any,
     ) -> None:
         self.expire = expire
-        self.asset = asset_factory(steps=expire, S=S, u=u, d=d, states=asset_states)
-        self.R = interest_factory(value=interest_value, states=interest_states, steps=expire)
-        self.pi = pi_factory(value=pi_value, states=pi_states, steps=expire, asset=self.asset, R=self.R)
+        self.asset = asset_factory(steps=expire, S=S, u=u, d=d)
+        self.R = interest_factory(R=R, steps=expire)
+        self.pi = pi_factory(pi=pi, steps=expire, asset=self.asset, R=self.R)
         self.derivative = DerivativeModel(
             expire=expire,
             pi=self.pi,
             R=self.R,
-            states=derivative_states,
-            strike=strike,
+            states=W,
+            strike=K,
             type=type,
             asset=self.asset,
             style=style,
@@ -54,12 +106,49 @@ class Solver:
     def premium_state_price(self) -> float:
         return sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1], strict=True)])
 
-    @property
-    def premium(self) -> float:
-        return self.derivative[0, 0]
-
 
 class OneStepSolver(Solver):
+    @overload
+    @classmethod
+    def init(
+        cls,
+        *,
+        S: float | int,
+        u: float,
+        d: float,
+        K: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: float | StateT = 1.0,
+        **kwargs: Any,
+    ) -> OneStepSolver: ...
+    @overload
+    @classmethod
+    def init(
+        cls,
+        *,
+        S: StateT,
+        W: StateT | None = None,
+        R: float | StateT = 1.0,
+        **kwargs: Any,
+    ) -> OneStepSolver: ...
+    @classmethod
+    def init(
+        cls,
+        *,
+        S: float | StateT | int,
+        u: float | None = None,
+        d: float | None = None,
+        W: StateT | None = None,
+        K: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: float | StateT = 1.0,
+        pi: float | StateT | None = None,
+        **kwargs: Any,
+    ) -> OneStepSolver:
+        return cls(expire=1, S=S, u=u, d=d, W=W, K=K, type=type, style=style, R=R, pi=pi, **kwargs)
+
     @property
     def H0(self) -> float:
         return calculate_H0(

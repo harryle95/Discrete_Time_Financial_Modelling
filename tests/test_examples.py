@@ -30,20 +30,20 @@ from src.solver import OneStepSolver, Solver
 
 
 @pytest.mark.parametrize(
-    "strike, asset, type, exp_value",
+    "K, asset, type, exp_value",
     [
         (22, 35, "call", 13),  # Quiz 1-7
         (14, 5, "put", 9),  # Quiz 1-8
     ],
 )
 def test_quiz_1_7(
-    strike: float,
+    K: float,
     asset: float,
     type: OptionType,
     exp_value: float,
 ) -> None:
     T = 1
-    W = BaseDerivative(strike=strike, expire=T, type=type)
+    W = BaseDerivative(strike=K, expire=T, type=type)
     value = W.value(T, asset)
     assert_approx_equal(value, exp_value)
 
@@ -76,17 +76,11 @@ def test_quiz_1_10() -> None:
 def test_example_1_13() -> None:
     R = 10 / 9
     S_11 = 20 / 3
-    W_11 = 7
+    W_11 = 7.0
     S_10 = 40 / 9
-    W_10 = 2
-    S_0 = 5
-    T = 1
-    model = OneStepSolver(
-        expire=T,
-        asset_states={0: [S_0], 1: [S_10, S_11]},
-        derivative_states={1: [W_10, W_11]},
-        interest_value=R,
-    )
+    W_10 = 2.0
+    S_0 = 5.0
+    model = OneStepSolver.init(S={0: [S_0], 1: [S_10, S_11]}, W={1: [W_10, W_11]}, R=R)
     H0 = model.H0
     H1 = model.H1
     W0 = model.premium_replicating
@@ -101,8 +95,7 @@ def test_example_1_14() -> None:
     S_11 = 6
     S_10 = 3
     S_0 = 4
-    T = 1
-    model = OneStepSolver(expire=T, strike=K, interest_value=R, asset_states={0: [S_0], 1: [S_10, S_11]}, type="call")
+    model = OneStepSolver.init(K=K, R=R, S={0: [S_0], 1: [S_10, S_11]}, type="call")
     H0 = model.H0
     H1 = model.H1
     W0 = model.premium_replicating
@@ -118,38 +111,33 @@ def test_example_1_18() -> None:
     S_10 = 40 / 9
     W_10 = 2
     S_0 = 5
-    T = 1
-    model = OneStepSolver(
-        expire=T, interest_value=R, asset_states={0: [S_0], 1: [S_10, S_11]}, derivative_states={1: [W_10, W_11]}
-    )
+    model = OneStepSolver.init(R=R, S={0: [S_0], 1: [S_10, S_11]}, W={1: [W_10, W_11]})
 
     p_up = model.pi[0, 0]
     p_down = 1 - p_up
-    W0 = model.premium
+    W0 = model.derivative.premium
     assert_approx_equal(p_up, 1 / 2)
     assert_approx_equal(p_down, 1 / 2)
     assert_approx_equal(W0, 4.05)
 
 
 def test_workshop_2_1() -> None:
-    S_0 = 4
-    S_11 = 8
-    S_10 = 2
+    S_0 = 4.0
+    S_11 = 8.0
+    S_10 = 2.0
     r = 0.25
-    K = 6
-    T = 1
+    K = 6.0
     R = 1 + r
 
     # Call Model
-    call_model = OneStepSolver(
-        expire=T,
-        asset_states={0: [S_0], 1: [S_10, S_11]},
-        interest_value=R,
-        strike=6,
+    call_model = OneStepSolver.init(
+        S={0: [S_0], 1: [S_10, S_11]},
+        R=R,
+        K=K,
         type="call",
     )
     C_0_replicate = call_model.premium_replicating
-    C_0_general = call_model.premium
+    C_0_general = call_model.derivative.premium
     H0 = call_model.H0
     H1 = call_model.H1
     call_p_up = call_model.pi[0, 0]
@@ -164,27 +152,24 @@ def test_workshop_2_1() -> None:
     assert_approx_equal(C_0_general, 0.8)
 
     # Put Model
-    put_model = OneStepSolver(
-        expire=T,
-        asset_states={0: [S_0], 1: [S_10, S_11]},
-        interest_value=R,
-        strike=6,
+    put_model = OneStepSolver.init(
+        S={0: [S_0], 1: [S_10, S_11]},
+        R=R,
+        K=6,
         type="put",
     )
-    P_0 = put_model.premium
+    P_0 = put_model.derivative.premium
     assert_approx_equal(P_0, 1.6)
     # Parity
     actual = C_0_general - P_0
-    expected = put_call_parity(S_0, K, R, T)
+    expected = put_call_parity(S_0, K, R, 1)
     assert_approx_equal(actual, -0.8)
     assert_approx_equal(expected, -0.8)
 
 
 @pytest.mark.parametrize("W_11, S_11, W_10, S_10, R, T, H0, H1", [(0, 50, 5, 10, 1.25, 1, 5, -0.125)])
 def test_quiz_2_1(W_11: float, S_11: float, W_10: float, S_10: float, R: float, T: int, H0: float, H1: float) -> None:
-    model = OneStepSolver(
-        expire=T, asset_states={0: [0], 1: [S_10, S_11]}, derivative_states={1: [W_10, W_11]}, interest_value=R
-    )
+    model = OneStepSolver.init(S={0: [0], 1: [S_10, S_11]}, W={1: [W_10, W_11]}, R=R)
     assert_approx_equal(H0, model.H0)
     assert_approx_equal(H1, model.H1)
 
@@ -200,19 +185,19 @@ def test_quiz_2_2() -> None:
 @pytest.mark.parametrize(
     "S_0, u, d, R, T, pi",
     [
-        (18, 1.18, 0.98, 1.08, 1, 0.5),
-        (12, 1.11, 0.94, 1.08, 1, 0.8235),
+        (18.0, 1.18, 0.98, 1.08, 1, 0.5),
+        (12.0, 1.11, 0.94, 1.08, 1, 0.8235),
     ],
 )
 def test_quiz_2_3(S_0: float, u: float, d: float, R: float, T: int, pi: float) -> None:
     asset = asset_factory(T, S_0, u, d)
-    interest = interest_factory(value=R)
+    interest = interest_factory(R=R)
     pi_model = pi_factory(asset=asset, R=interest)
     assert_approx_equal(pi_model[0, 0], pi, 4)
 
 
 def test_quiz_2_4() -> None:
-    S_0 = 20
+    S_0 = 20.0
     u = 1.1
     d = 0.8
     model = asset_factory(1, S_0, u, d)
@@ -232,10 +217,8 @@ def test_quiz_2_4() -> None:
 def test_quiz_2_5_6(
     K: float, S_11: float, S_10: float, R: float, pi: float, T: int, type: OptionType, premium: float
 ) -> None:
-    model = OneStepSolver(
-        expire=T, strike=K, asset_states={0: [0], 1: [S_10, S_11]}, interest_value=R, pi_value=pi, type=type
-    )
-    assert_approx_equal(model.premium, premium, 4)
+    model = OneStepSolver.init(K=K, S={0: [0], 1: [S_10, S_11]}, R=R, pi=pi, type=type)
+    assert_approx_equal(model.derivative.premium, premium, 4)
 
 
 @pytest.mark.parametrize("K, C_0, S_0, R, premium", [(32, 2, 26, 1.02, 7.373), (34, 2.65, 27, 1.08, 7.131)])
@@ -248,8 +231,8 @@ def test_quiz_2_7(K: float, C_0: float, S_0: float, R: float, premium: float) ->
 @pytest.mark.parametrize(
     "S_0, u, R, profit",
     [
-        (17, 1.07, 1.02, 1.452),
-        (18, 1.08, 1.03, 1.873),
+        (17.0, 1.07, 1.02, 1.452),
+        (18.0, 1.08, 1.03, 1.873),
     ],
 )
 def test_quiz_2_8(S_0: float, u: float, R: float, profit: float) -> None:
@@ -270,11 +253,10 @@ def test_quiz_2_8(S_0: float, u: float, R: float, profit: float) -> None:
 def test_quiz_2_10(
     W_0: float, S_0: float, W_11: float, W_10: float, S_11: float, S_10: float, N: int, R: float, H1: float
 ) -> None:
-    model = OneStepSolver(
-        expire=1,
-        asset_states={0: [S_0], 1: [S_10, S_11]},
-        derivative_states={0: [W_0], 1: [W_10 * N, W_11 * N]},
-        interest_value=R,
+    model = OneStepSolver.init(
+        S={0: [S_0], 1: [S_10, S_11]},
+        W={0: [W_0], 1: [W_10 * N, W_11 * N]},
+        R=R,
     )
 
     assert_approx_equal(model.H1, H1, 3)
@@ -297,7 +279,7 @@ def test_example_2_2() -> None:
     S = 4
     R = 5 / 4
     expire = 2
-    model = Solver(expire=expire, strike=K, u=u, d=d, S=S, interest_value=R, type="call")
+    model = Solver.init(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
     assert_almost_equal(model.derivative[0], [2.40])
     assert_almost_equal(model.derivative[1], [0.4, 5.6])
     assert_almost_equal(model.derivative[2], [0, 1, 13])
@@ -310,7 +292,7 @@ def test_example_2_3() -> None:
     S = 4
     R = 5 / 4
     expire = 3
-    model = Solver(expire=expire, strike=K, u=u, d=d, S=S, interest_value=R, type="call")
+    model = Solver.init(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
     derivative = model.derivative
     assert_almost_equal(derivative[0], [2.816])
     assert_almost_equal(derivative[1], [0.8, 6.24])
@@ -325,10 +307,10 @@ def test_example_2_4() -> None:
     S = 4
     R = 5 / 4
     expire = 3
-    model = Solver(expire=expire, strike=K, u=u, d=d, S=S, interest_value=R, type="call")
+    model = Solver.init(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
     derivative = model.derivative
     assert_almost_equal(model.state_price[3], [8 / 125, 24 / 125, 24 / 125, 8 / 125])
-    assert_almost_equal(model.premium, derivative[0, 0])
+    assert_almost_equal(model.derivative.premium, derivative[0, 0])
 
 
 def test_workshop_3_1() -> None:
@@ -338,11 +320,11 @@ def test_workshop_3_1() -> None:
     d = 0.95
     R = 1.01
     T = 10
-    put_model = Solver(expire=T, strike=K, S=S, u=u, d=d, interest_value=R, type="put")
-    put_premium = put_model.premium
+    put_model = Solver.init(expire=T, K=K, S=S, u=u, d=d, R=R, type="put")
+    put_premium = put_model.derivative.premium
 
-    call_model = Solver(expire=T, strike=K, S=S, u=u, d=d, interest_value=R, type="call")
-    call_premium = call_model.premium
+    call_model = Solver.init(expire=T, K=K, S=S, u=u, d=d, R=R, type="call")
+    call_premium = call_model.derivative.premium
     assert_almost_equal(put_premium, 1.8202, 4)
     assert_almost_equal(call_premium, 0.9986, 4)
     assert_approx_equal(put_call_parity(S, K, R, T), call_premium - put_premium)
@@ -355,7 +337,7 @@ def test_workshop_3_2() -> None:
     d = 1 / u
     T = 8
     R = 1.05
-    put_model = Solver(expire=T, strike=K, S=S, u=u, d=d, interest_value=R, type="put")
+    put_model = Solver.init(expire=T, K=K, S=S, u=u, d=d, R=R, type="put")
     assert_almost_equal(
         put_model.state_price[-1],
         [
@@ -371,7 +353,7 @@ def test_workshop_3_2() -> None:
         ],
         6,
     )
-    assert_almost_equal(put_model.premium, 0.4793, 4)
+    assert_almost_equal(put_model.derivative.premium, 0.4793, 4)
     assert_almost_equal(put_model.derivative[0, 0], 0.4793, 4)
 
 
@@ -387,15 +369,15 @@ def test_quiz_3_3(S: float, u: float, d: float, T: int, largest: float, smallest
     [([0, 0, 0, 3.84], 0.3, 1.13, 3, 0.0719), ([0, 0, 0, 3.5], 0.3, 1.18, 3, 0.0575)],
 )
 def test_quiz_3_4(C: Sequence[float], pi: float, R: float, T: int, premium: float) -> None:
-    model = Solver(expire=T, derivative_states={T: C}, pi_value=pi, interest_value=R, asset_states={0: [0]})
-    assert_almost_equal(model.premium, premium, 4)
+    model = Solver.init(expire=T, W={T: C}, pi=pi, R=R, S={0: [0]})
+    assert_almost_equal(model.derivative.premium, premium, 4)
 
 
 @pytest.mark.parametrize("K, T, asset, put", [(30, 3, [10, 15, 25, 35], [20, 15, 5, 0])])
 def test_quiz_3_5(K: float, T: int, asset: Sequence[float], put: float) -> None:
-    asset_model = asset_factory(states={0: [0], T: asset}, steps=T)
-    pi = pi_factory(value=0.1)
-    R = interest_factory(value=0.1)
+    asset_model = asset_factory(S={0: [0], T: asset}, steps=T)
+    pi = pi_factory(pi=0.1)
+    R = interest_factory(R=0.1)
     derivative = DerivativeModel(expire=T, strike=K, type="put", pi=pi, R=R, asset=asset_model)
     assert_almost_equal(derivative.final, put)
 
@@ -414,8 +396,8 @@ def test_quiz_3_6(R: float, state_22: float, result: float) -> None:
 )
 def test_quiz_3_7(derivative: Sequence[float], R: float, pi: float, premium: float) -> None:
     T = len(derivative) - 1
-    model = Solver(expire=T, derivative_states={T: derivative}, interest_value=R, pi_value=pi, asset_states={0: [0]})
-    assert_almost_equal(model.premium, premium, 4)
+    model = Solver.init(expire=T, W={T: derivative}, R=R, pi=pi, S={0: [0]})
+    assert_almost_equal(model.derivative.premium, premium, 4)
 
 
 @pytest.mark.parametrize(
@@ -438,8 +420,8 @@ def test_quiz_3_8(derivative: Sequence[float], state_price: Sequence[float], pre
 )
 def test_quiz_3_9_10(K: float, T: int, S: float, u: float, R: float, type: OptionType, premium: float) -> None:
     d = 1 / u
-    model = Solver(expire=T, S=S, u=u, d=d, interest_value=R, type=type, strike=K)
-    assert_almost_equal(model.premium, premium, 3)
+    model = Solver.init(expire=T, S=S, u=u, d=d, R=R, type=type, K=K)
+    assert_almost_equal(model.derivative.premium, premium, 3)
 
 
 def test_example_2_6() -> None:
@@ -496,8 +478,8 @@ def test_example_2_9() -> None:
     N = 2
     u, d = calculate_BS_CRR_factor(sigma, T, N)
     R = calculate_BS_R(r, T, N)
-    model = Solver(S=S, strike=K, expire=2, interest_value=R, u=u, d=d, type="call")
-    assert_almost_equal(model.premium, 7.89449226, 4)
+    model = Solver.init(S=S, K=K, expire=2, R=R, u=u, d=d, type="call", style="european")
+    assert_almost_equal(model.derivative.premium, 7.89449226, 4)
 
 
 def test_example_2_10() -> None:
@@ -531,22 +513,22 @@ def test_example_2_12() -> None:
 
     R = {0: [1.03], 1: [1.035, 1.025], 2: [1.04, 1.03, 1.02], 3: [1.045, 1.035, 1.025, 1.015]}
     T = 4
-    call_model = Solver(expire=T, S=S, u=u, d=d, strike=K, type="call", interest_states=R)
-    call_premium = call_model.premium
+    call_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="call", R=R)
+    call_premium = call_model.derivative.premium
     assert_almost_equal(call_premium, 3.2963, 4)
 
-    put_model = Solver(expire=T, S=S, u=u, d=d, strike=K, type="put", interest_states=R)
-    put_premium = put_model.premium
+    put_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="put", R=R)
+    put_premium = put_model.derivative.premium
     assert_almost_equal(put_premium, 0.3083, 4)
 
     R_const = 1.03
 
-    call_model = Solver(expire=T, S=S, u=u, d=d, strike=K, type="call", interest_value=R_const)
-    call_premium = call_model.premium
+    call_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="call", R=R_const)
+    call_premium = call_model.derivative.premium
     assert_almost_equal(call_premium, 3.4786, 4)
 
-    put_model = Solver(expire=T, S=S, u=u, d=d, strike=K, type="put", interest_value=R_const)
-    put_premium = put_model.premium
+    put_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="put", R=R_const)
+    put_premium = put_model.derivative.premium
     assert_almost_equal(put_premium, 0.3599, 4)
 
 
@@ -577,27 +559,27 @@ def test_seminar_4_2() -> None:
     expire = 2
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    call_model = Solver(expire=expire, strike=K, S=20, u=u, d=d, type="call", interest_value=R)
-    assert_almost_equal(call_model.premium, 2.644, 3)
+    call_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="call", R=R)
+    assert_almost_equal(call_model.derivative.premium, 2.644, 3)
 
     expire = 2
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    put_model = Solver(expire=expire, strike=K, S=20, u=u, d=d, type="put", interest_value=R)
-    assert_almost_equal(put_model.premium, 6.585, 3)
+    put_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="put", R=R)
+    assert_almost_equal(put_model.derivative.premium, 6.585, 3)
 
     # Part d
     expire = 10
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    call_model = Solver(expire=expire, strike=K, S=20, u=u, d=d, type="call", interest_value=R)
-    assert_almost_equal(call_model.premium, 2.517, 3)
+    call_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="call", R=R)
+    assert_almost_equal(call_model.derivative.premium, 2.517, 3)
 
     expire = 10
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    put_model = Solver(expire=expire, strike=K, S=20, u=u, d=d, type="put", interest_value=R)
-    assert_almost_equal(put_model.premium, 6.458, 3)
+    put_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="put", R=R)
+    assert_almost_equal(put_model.derivative.premium, 6.458, 3)
 
 
 def test_workshop_4_1() -> None:
@@ -609,11 +591,11 @@ def test_workshop_4_1() -> None:
     N = 8
     R = 1.1
 
-    call = Solver(strike=K, S=S, u=u, d=d, expire=N, interest_value=R, type="call")
-    assert_approx_equal(call.premium, 1.9568, 4)
-    put = Solver(strike=K, S=S, u=u, d=d, expire=N, interest_value=R, type="put")
-    assert_approx_equal(put.premium, 0.2894, 4)
-    assert_approx_equal(put_call_parity(S, K, R, N), call.premium - put.premium)
+    call = Solver.init(K=K, S=S, u=u, d=d, expire=N, R=R, type="call")
+    assert_approx_equal(call.derivative.premium, 1.9568, 4)
+    put = Solver.init(K=K, S=S, u=u, d=d, expire=N, R=R, type="put")
+    assert_approx_equal(put.derivative.premium, 0.2894, 4)
+    assert_approx_equal(put_call_parity(S, K, R, N), call.derivative.premium - put.derivative.premium)
     sigma = calculate_BS_sigma_from_u(u, T_year, N)
     assert_approx_equal(sigma, 0.5247, 4)
     r = calculate_BS_r_from_R(R, N, T_year)
@@ -632,10 +614,10 @@ def test_workshop_4_2() -> None:
     d = 1 / u
     T = 3
     R_states = {0: [1.02], 1: [1.03, 1.01], 2: [1.05, 1.02, 1.005]}
-    call = Solver(expire=T, S=S, u=u, d=d, strike=K, type="call", interest_states=R_states)
-    assert_almost_equal(call.premium, 1.0755, 4)
-    put = Solver(expire=T, S=S, u=u, d=d, strike=K, type="put", interest_states=R_states)
-    assert_approx_equal(put.premium, 1.4154, 4)
+    call = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="call", R=R_states)
+    assert_almost_equal(call.derivative.premium, 1.0755, 4)
+    put = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="put", R=R_states)
+    assert_approx_equal(put.derivative.premium, 1.4154, 4)
     pi = [[0.5091], [0.5364, 0.4818], [0.5909, 0.5091, 0.4682]]
     for i in range(T):
         assert_almost_equal(call.pi[i], pi[i], 4)
@@ -706,16 +688,16 @@ def test_quiz_4_10(value: float, result: float) -> None:
 
 
 def test_example_3_1() -> None:
-    strike = 80
+    K = 80
     S = 80
     u = 1.1
     d = 0.95
     R = 1.05
     N = 2
-    eu_solver = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="european", strike=strike)
-    american_solver = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="american", strike=strike)
-    assert cast(ConstantPi, eu_solver.pi).value == 2 / 3
-    assert cast(ConstantPi, american_solver.pi).value == 2 / 3
+    eu_solver = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="european", K=K)
+    american_solver = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="american", K=K)
+    assert cast(ConstantPi, eu_solver.pi).value == 2 / 3  # noqa: S101
+    assert cast(ConstantPi, american_solver.pi).value == 2 / 3  # noqa: S101
 
     # Check t = 2
     assert_almost_equal(eu_solver.derivative[2], [0, 3.6, 16.8])
@@ -731,7 +713,7 @@ def test_example_3_1() -> None:
 
 
 def test_example_3_2() -> None:
-    strike = 35
+    K = 35
     S = 32
     sigma = 0.4
     r = 0.04
@@ -742,10 +724,10 @@ def test_example_3_2() -> None:
     R = math.exp(r * T / N)
 
     # Get solver obj
-    eu_call = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="european", strike=strike)
-    eu_put = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="put", style="european", strike=strike)
-    us_call = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="call", style="american", strike=strike)
-    us_put = Solver(expire=N, S=S, u=u, d=d, interest_value=R, type="put", style="american", strike=strike)
+    eu_call = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="european", K=K)
+    eu_put = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="put", style="european", K=K)
+    us_call = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="american", K=K)
+    us_put = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="put", style="american", K=K)
 
     # Check values
     eu_call_derivative = {
