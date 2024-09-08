@@ -187,3 +187,11 @@ def calculate_BS_sigma(
         return calculate_BS_Call(S, K, r, T, sigma) - W if type == "call" else calculate_BS_Put(S, K, r, T, sigma) - W
 
     return cast(float, scipy.optimize.root_scalar(wrapper, bracket=range, method="brentq").root)
+
+
+def calculate_forward_rate(R: float, S_0: float) -> float:
+    return R * S_0
+
+
+def calculate_forward_rate_forex(Rd: float, Rf: float, X_0: float) -> float:
+    return Rd / Rf * X_0

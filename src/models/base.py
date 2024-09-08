@@ -1,18 +1,10 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from enum import Enum
 from typing import Literal
 
-StateT = Mapping[int, Sequence[float | int]]
+from numpy.typing import ArrayLike
 
-
-class _OptionStyle(Enum):
-    EUROPEAN = "european"
-    AMERICAN = "american"
-
-
-class _OptionType(Enum):
-    PUT = "put"
-    CALL = "call"
+StateT = Mapping[int, ArrayLike]
 
 
 class _BarrierType(Enum):
@@ -22,6 +14,7 @@ class _BarrierType(Enum):
     DOWN_OUT = "down and out"
 
 
-OptionType = _OptionType | Literal["put", "call"]
-OptionStyle = _OptionStyle | Literal["european", "american"]
+OptionType = Literal["put", "call"]
+OptionStyle = Literal["european", "american"]
 BarrierType = _BarrierType | Literal["up and in", "up and out", "down and in", "down and out"]
+ContractType = Literal["long", "short"]

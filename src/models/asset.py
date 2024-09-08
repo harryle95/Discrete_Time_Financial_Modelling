@@ -1,3 +1,5 @@
+import numpy as np
+
 from src.models.base import StateT
 from src.models.indexable import Indexable
 
@@ -27,7 +29,42 @@ class CRRAsset(AssetModel):
         self.u = u
         self.d = d
         for t in range(self.steps + 1):
-            self.set_state(t, [self.S * (self.u**index) * (self.d ** (t - index)) for index in range(t + 1)])
+            pwr = np.arange(t + 1)
+            state_value = self.S * np.power(self.u, pwr) * np.power(self.d, t - pwr)
+            self.set_state(t, state_value)
+
+
+class ForExAsset(StandardAsset):
+    def __init__(self, X: StateT, F: float | int, Rf: float, steps: int) -> None:
+        self.X = X
+        self.F = F
+        self.Rf = Rf
+        super().__init__(states={k: np.array(v) * F * np.power(Rf, k) for k, v in X.items()}, steps=steps)
+
+
+class CRRForExAsset(CRRAsset):
+    def __init__(self, X: float | int, u: float, d: float, F: float | int, Rf: float, steps: int) -> None:
+        self.X = X
+        self.F = F
+        self.Rf = Rf
+        super().__init__(S=X * F, u=u, d=d, steps=steps)
+
+
+def forex_factory(
+    steps: int,
+    X: int | float | StateT,
+    F: float,
+    Rf: float,
+    u: float | None = None,
+    d: float | None = None,
+) -> CRRForExAsset | ForExAsset:
+    if isinstance(X, dict):
+        return ForExAsset(X=X, F=F, Rf=Rf, steps=steps)
+    if isinstance(X, int | float):
+        if not u or not d:
+            raise ValueError("CRR model expects non null u, d")
+        return CRRForExAsset(X=X, u=u, d=d, F=F, Rf=Rf, steps=steps)
+    raise TypeError(f"Invalid type for exchange rate: {type(X)}")
 
 
 def asset_factory(

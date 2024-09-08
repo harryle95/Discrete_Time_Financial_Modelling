@@ -1,5 +1,5 @@
 from src.helpers import calculate_pi, calculate_pi_CRR
-from src.models.asset import AssetModel, CRRAsset
+from src.models.asset import AssetModel, CRRAsset, CRRForExAsset, ForExAsset
 from src.models.base import StateT
 from src.models.indexable import Constant, Indexable
 from src.models.interest import ConstantInterestRate, InterestRateModel
@@ -53,8 +53,14 @@ def pi_factory(
         return ConstantPi(pi)
     if isinstance(pi, dict) and steps:
         return StatePi(pi=pi, steps=steps)
+    if isinstance(asset, CRRForExAsset) and isinstance(R, ConstantInterestRate):
+        pi = calculate_pi_CRR(asset.u, asset.d, R.value / asset.Rf)
+        return ConstantPi(pi)
     if isinstance(asset, CRRAsset) and isinstance(R, ConstantInterestRate):
         pi = calculate_pi_CRR(asset.u, asset.d, R.value)
+        return ConstantPi(pi)
+    if isinstance(asset, ForExAsset) and isinstance(R, ConstantInterestRate):
+        pi = calculate_pi(asset[1, 1], asset[1, 0], R.value / asset.Rf, asset[0, 0])
         return ConstantPi(pi)
     if asset and isinstance(R, ConstantInterestRate):
         pi = calculate_pi(asset[1, 1], asset[1, 0], R.value, asset[0, 0])

@@ -4,15 +4,15 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.models.asset import AssetModel
-from src.models.base import OptionStyle, OptionType, StateT
+from src.models.base import ContractType, OptionStyle, OptionType, StateT
 from src.models.indexable import Indexable
 from src.models.interest import InterestRateModel
 from src.models.pi import PiModel
 
-__all__ = ("DerivativeModel",)
+__all__ = ("OptionModel",)
 
 
-class DerivativeModel(Indexable):
+class OptionModel(Indexable):
     def __init__(
         self,
         expire: int,
@@ -56,7 +56,6 @@ class DerivativeModel(Indexable):
 
     @staticmethod
     def value_from_exercising(K: float, S: NDArray | float, type: OptionType) -> NDArray:
-        type = type.value if not isinstance(type, str) else type  # noqa: A001
         value = S - K if type == "call" else K - S
         return np.maximum(value, 0)
 

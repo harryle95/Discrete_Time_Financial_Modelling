@@ -14,18 +14,20 @@ from src.helpers import (
     calculate_BS_r_from_R,
     calculate_BS_sigma,
     calculate_BS_sigma_from_u,
+    calculate_forward_rate,
+    calculate_forward_rate_forex,
     present_value,
     put_call_parity,
 )
 from src.models import (
     ConstantPi,
-    DerivativeModel,
+    OptionModel,
     OptionType,
     asset_factory,
     interest_factory,
     pi_factory,
 )
-from src.solver import OneStepSolver, Solver
+from src.solver import AssetOptionSolver, ForExOptionSolver, OneStepAssetOptionSolver
 
 
 @pytest.mark.parametrize(
@@ -41,7 +43,7 @@ def test_quiz_1_7(
     type: OptionType,
     exp_value: float,
 ) -> None:
-    value = DerivativeModel.value_from_exercising(K=K, S=asset, type=type)
+    value = OptionModel.value_from_exercising(K=K, S=asset, type=type)
     assert_approx_equal(value, exp_value)
 
 
@@ -51,7 +53,7 @@ def test_quiz_1_9() -> None:
     K = 14
     R = 1.03
     S_1 = 7
-    value = DerivativeModel.value_from_exercising(K=K, S=S_1, type="put")
+    value = OptionModel.value_from_exercising(K=K, S=S_1, type="put")
     assert_approx_equal((value - P_0 * R) * N, 548.59)
 
 
@@ -61,7 +63,7 @@ def test_quiz_1_10() -> None:
     C_0 = 0.55
     R = 1.03
     S_1 = 36.0
-    value = DerivativeModel.value_from_exercising(K=K, S=S_1, type="call")
+    value = OptionModel.value_from_exercising(K=K, S=S_1, type="call")
     profit = C_0 * N * R - N * value
     assert_approx_equal(profit, 56.65)
 
@@ -73,7 +75,7 @@ def test_example_1_13() -> None:
     S_10 = 40 / 9
     W_10 = 2.0
     S_0 = 5.0
-    model = OneStepSolver.init(S={0: [S_0], 1: [S_10, S_11]}, W={1: [W_10, W_11]}, R=R)
+    model = OneStepAssetOptionSolver(S={0: [S_0], 1: [S_10, S_11]}, W={1: [W_10, W_11]}, R=R)
     H0 = model.H0
     H1 = model.H1
     W0 = model.premium_replicating
@@ -88,7 +90,7 @@ def test_example_1_14() -> None:
     S_11 = 6
     S_10 = 3
     S_0 = 4
-    model = OneStepSolver.init(K=K, R=R, S={0: [S_0], 1: [S_10, S_11]}, type="call")
+    model = OneStepAssetOptionSolver(K=K, R=R, S={0: [S_0], 1: [S_10, S_11]}, type="call")
     H0 = model.H0
     H1 = model.H1
     W0 = model.premium_replicating
@@ -104,7 +106,7 @@ def test_example_1_18() -> None:
     S_10 = 40 / 9
     W_10 = 2
     S_0 = 5
-    model = OneStepSolver.init(R=R, S={0: [S_0], 1: [S_10, S_11]}, W={1: [W_10, W_11]})
+    model = OneStepAssetOptionSolver(R=R, S={0: [S_0], 1: [S_10, S_11]}, W={1: [W_10, W_11]})
 
     p_up = model.pi[0, 0]
     p_down = 1 - p_up
@@ -123,7 +125,7 @@ def test_workshop_2_1() -> None:
     R = 1 + r
 
     # Call Model
-    call_model = OneStepSolver.init(
+    call_model = OneStepAssetOptionSolver(
         S={0: [S_0], 1: [S_10, S_11]},
         R=R,
         K=K,
@@ -145,7 +147,7 @@ def test_workshop_2_1() -> None:
     assert_approx_equal(C_0_general, 0.8)
 
     # Put Model
-    put_model = OneStepSolver.init(
+    put_model = OneStepAssetOptionSolver(
         S={0: [S_0], 1: [S_10, S_11]},
         R=R,
         K=6,
@@ -162,7 +164,7 @@ def test_workshop_2_1() -> None:
 
 @pytest.mark.parametrize("W_11, S_11, W_10, S_10, R, T, H0, H1", [(0, 50, 5, 10, 1.25, 1, 5, -0.125)])
 def test_quiz_2_1(W_11: float, S_11: float, W_10: float, S_10: float, R: float, T: int, H0: float, H1: float) -> None:
-    model = OneStepSolver.init(S={0: [0], 1: [S_10, S_11]}, W={1: [W_10, W_11]}, R=R)
+    model = OneStepAssetOptionSolver(S={0: [0], 1: [S_10, S_11]}, W={1: [W_10, W_11]}, R=R)
     assert_approx_equal(H0, model.H0)
     assert_approx_equal(H1, model.H1)
 
@@ -210,7 +212,7 @@ def test_quiz_2_4() -> None:
 def test_quiz_2_5_6(
     K: float, S_11: float, S_10: float, R: float, pi: float, T: int, type: OptionType, premium: float
 ) -> None:
-    model = OneStepSolver.init(K=K, S={0: [0], 1: [S_10, S_11]}, R=R, pi=pi, type=type)
+    model = OneStepAssetOptionSolver(K=K, S={0: [0], 1: [S_10, S_11]}, R=R, pi=pi, type=type)
     assert_approx_equal(model.derivative.premium, premium, 4)
 
 
@@ -246,7 +248,7 @@ def test_quiz_2_8(S_0: float, u: float, R: float, profit: float) -> None:
 def test_quiz_2_10(
     W_0: float, S_0: float, W_11: float, W_10: float, S_11: float, S_10: float, N: int, R: float, H1: float
 ) -> None:
-    model = OneStepSolver.init(
+    model = OneStepAssetOptionSolver(
         S={0: [S_0], 1: [S_10, S_11]},
         W={0: [W_0], 1: [W_10 * N, W_11 * N]},
         R=R,
@@ -272,7 +274,7 @@ def test_example_2_2() -> None:
     S = 4
     R = 5 / 4
     expire = 2
-    model = Solver.init(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
+    model = AssetOptionSolver(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
     assert_almost_equal(model.derivative[0], [2.40])
     assert_almost_equal(model.derivative[1], [0.4, 5.6])
     assert_almost_equal(model.derivative[2], [0, 1, 13])
@@ -285,7 +287,7 @@ def test_example_2_3() -> None:
     S = 4
     R = 5 / 4
     expire = 3
-    model = Solver.init(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
+    model = AssetOptionSolver(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
     derivative = model.derivative
     assert_almost_equal(derivative[0], [2.816])
     assert_almost_equal(derivative[1], [0.8, 6.24])
@@ -300,7 +302,7 @@ def test_example_2_4() -> None:
     S = 4
     R = 5 / 4
     expire = 3
-    model = Solver.init(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
+    model = AssetOptionSolver(expire=expire, K=K, u=u, d=d, S=S, R=R, type="call")
     derivative = model.derivative
     assert_almost_equal(model.state_price[3], [8 / 125, 24 / 125, 24 / 125, 8 / 125])
     assert_almost_equal(model.derivative.premium, derivative[0, 0])
@@ -313,10 +315,10 @@ def test_workshop_3_1() -> None:
     d = 0.95
     R = 1.01
     T = 10
-    put_model = Solver.init(expire=T, K=K, S=S, u=u, d=d, R=R, type="put")
+    put_model = AssetOptionSolver(expire=T, K=K, S=S, u=u, d=d, R=R, type="put")
     put_premium = put_model.derivative.premium
 
-    call_model = Solver.init(expire=T, K=K, S=S, u=u, d=d, R=R, type="call")
+    call_model = AssetOptionSolver(expire=T, K=K, S=S, u=u, d=d, R=R, type="call")
     call_premium = call_model.derivative.premium
     assert_almost_equal(put_premium, 1.8202, 4)
     assert_almost_equal(call_premium, 0.9986, 4)
@@ -330,7 +332,7 @@ def test_workshop_3_2() -> None:
     d = 1 / u
     T = 8
     R = 1.05
-    put_model = Solver.init(expire=T, K=K, S=S, u=u, d=d, R=R, type="put")
+    put_model = AssetOptionSolver(expire=T, K=K, S=S, u=u, d=d, R=R, type="put")
     assert_almost_equal(
         put_model.state_price[-1],
         [
@@ -362,7 +364,7 @@ def test_quiz_3_3(S: float, u: float, d: float, T: int, largest: float, smallest
     [([0, 0, 0, 3.84], 0.3, 1.13, 3, 0.0719), ([0, 0, 0, 3.5], 0.3, 1.18, 3, 0.0575)],
 )
 def test_quiz_3_4(C: Sequence[float], pi: float, R: float, T: int, premium: float) -> None:
-    model = Solver.init(expire=T, W={T: C}, pi=pi, R=R, S={0: [0]})
+    model = AssetOptionSolver(expire=T, W={T: C}, pi=pi, R=R, S={0: [0]})
     assert_almost_equal(model.derivative.premium, premium, 4)
 
 
@@ -371,7 +373,7 @@ def test_quiz_3_5(K: float, T: int, asset: Sequence[float], put: float) -> None:
     asset_model = asset_factory(S={0: [0], T: asset}, steps=T)
     pi = pi_factory(pi=0.1)
     R = interest_factory(R=0.1)
-    derivative = DerivativeModel(expire=T, strike=K, type="put", pi=pi, R=R, asset=asset_model)
+    derivative = OptionModel(expire=T, strike=K, type="put", pi=pi, R=R, asset=asset_model)
     assert_almost_equal(derivative.final, put)
 
 
@@ -389,7 +391,7 @@ def test_quiz_3_6(R: float, state_22: float, result: float) -> None:
 )
 def test_quiz_3_7(derivative: Sequence[float], R: float, pi: float, premium: float) -> None:
     T = len(derivative) - 1
-    model = Solver.init(expire=T, W={T: derivative}, R=R, pi=pi, S={0: [0]})
+    model = AssetOptionSolver(expire=T, W={T: derivative}, R=R, pi=pi, S={0: [0]})
     assert_almost_equal(model.derivative.premium, premium, 4)
 
 
@@ -413,7 +415,7 @@ def test_quiz_3_8(derivative: Sequence[float], state_price: Sequence[float], pre
 )
 def test_quiz_3_9_10(K: float, T: int, S: float, u: float, R: float, type: OptionType, premium: float) -> None:
     d = 1 / u
-    model = Solver.init(expire=T, S=S, u=u, d=d, R=R, type=type, K=K)
+    model = AssetOptionSolver(expire=T, S=S, u=u, d=d, R=R, type=type, K=K)
     assert_almost_equal(model.derivative.premium, premium, 3)
 
 
@@ -471,7 +473,7 @@ def test_example_2_9() -> None:
     N = 2
     u, d = calculate_BS_CRR_factor(sigma, T, N)
     R = calculate_BS_R(r, T, N)
-    model = Solver.init(S=S, K=K, expire=2, R=R, u=u, d=d, type="call", style="european")
+    model = AssetOptionSolver(S=S, K=K, expire=2, R=R, u=u, d=d, type="call", style="european")
     assert_almost_equal(model.derivative.premium, 7.89449226, 4)
 
 
@@ -506,21 +508,21 @@ def test_example_2_12() -> None:
 
     R = {0: [1.03], 1: [1.035, 1.025], 2: [1.04, 1.03, 1.02], 3: [1.045, 1.035, 1.025, 1.015]}
     T = 4
-    call_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="call", R=R)
+    call_model = AssetOptionSolver(expire=T, S=S, u=u, d=d, K=K, type="call", R=R)
     call_premium = call_model.derivative.premium
     assert_almost_equal(call_premium, 3.2963, 4)
 
-    put_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="put", R=R)
+    put_model = AssetOptionSolver(expire=T, S=S, u=u, d=d, K=K, type="put", R=R)
     put_premium = put_model.derivative.premium
     assert_almost_equal(put_premium, 0.3083, 4)
 
     R_const = 1.03
 
-    call_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="call", R=R_const)
+    call_model = AssetOptionSolver(expire=T, S=S, u=u, d=d, K=K, type="call", R=R_const)
     call_premium = call_model.derivative.premium
     assert_almost_equal(call_premium, 3.4786, 4)
 
-    put_model = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="put", R=R_const)
+    put_model = AssetOptionSolver(expire=T, S=S, u=u, d=d, K=K, type="put", R=R_const)
     put_premium = put_model.derivative.premium
     assert_almost_equal(put_premium, 0.3599, 4)
 
@@ -552,26 +554,26 @@ def test_seminar_4_2() -> None:
     expire = 2
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    call_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="call", R=R)
+    call_model = AssetOptionSolver(expire=expire, K=K, S=20, u=u, d=d, type="call", R=R)
     assert_almost_equal(call_model.derivative.premium, 2.644, 3)
 
     expire = 2
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    put_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="put", R=R)
+    put_model = AssetOptionSolver(expire=expire, K=K, S=20, u=u, d=d, type="put", R=R)
     assert_almost_equal(put_model.derivative.premium, 6.585, 3)
 
     # Part d
     expire = 10
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    call_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="call", R=R)
+    call_model = AssetOptionSolver(expire=expire, K=K, S=20, u=u, d=d, type="call", R=R)
     assert_almost_equal(call_model.derivative.premium, 2.517, 3)
 
     expire = 10
     u, d = calculate_BS_CRR_factor(sigma_day, T_day, expire)
     R = calculate_BS_R(r_day, T_day, expire)
-    put_model = Solver.init(expire=expire, K=K, S=20, u=u, d=d, type="put", R=R)
+    put_model = AssetOptionSolver(expire=expire, K=K, S=20, u=u, d=d, type="put", R=R)
     assert_almost_equal(put_model.derivative.premium, 6.458, 3)
 
 
@@ -584,9 +586,9 @@ def test_workshop_4_1() -> None:
     N = 8
     R = 1.1
 
-    call = Solver.init(K=K, S=S, u=u, d=d, expire=N, R=R, type="call")
+    call = AssetOptionSolver(K=K, S=S, u=u, d=d, expire=N, R=R, type="call")
     assert_approx_equal(call.derivative.premium, 1.9568, 4)
-    put = Solver.init(K=K, S=S, u=u, d=d, expire=N, R=R, type="put")
+    put = AssetOptionSolver(K=K, S=S, u=u, d=d, expire=N, R=R, type="put")
     assert_approx_equal(put.derivative.premium, 0.2894, 4)
     assert_approx_equal(put_call_parity(S, K, R, N), call.derivative.premium - put.derivative.premium)
     sigma = calculate_BS_sigma_from_u(u, T_year, N)
@@ -607,9 +609,9 @@ def test_workshop_4_2() -> None:
     d = 1 / u
     T = 3
     R_states = {0: [1.02], 1: [1.03, 1.01], 2: [1.05, 1.02, 1.005]}
-    call = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="call", R=R_states)
+    call = AssetOptionSolver(expire=T, S=S, u=u, d=d, K=K, type="call", R=R_states)
     assert_almost_equal(call.derivative.premium, 1.0755, 4)
-    put = Solver.init(expire=T, S=S, u=u, d=d, K=K, type="put", R=R_states)
+    put = AssetOptionSolver(expire=T, S=S, u=u, d=d, K=K, type="put", R=R_states)
     assert_approx_equal(put.derivative.premium, 1.4154, 4)
     pi = [[0.5091], [0.5364, 0.4818], [0.5909, 0.5091, 0.4682]]
     for i in range(T):
@@ -687,22 +689,22 @@ def test_example_3_1() -> None:
     d = 0.95
     R = 1.05
     N = 2
-    eu_solver = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="european", K=K)
-    american_solver = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="american", K=K)
-    assert cast(ConstantPi, eu_solver.pi).value == 2 / 3  # noqa: S101
-    assert cast(ConstantPi, american_solver.pi).value == 2 / 3  # noqa: S101
+    eu_AssetOptionSolver = AssetOptionSolver(expire=N, S=S, u=u, d=d, R=R, type="call", style="european", K=K)
+    american_AssetOptionSolver = AssetOptionSolver(expire=N, S=S, u=u, d=d, R=R, type="call", style="american", K=K)
+    assert cast(ConstantPi, eu_AssetOptionSolver.pi).value == 2 / 3  # noqa: S101
+    assert cast(ConstantPi, american_AssetOptionSolver.pi).value == 2 / 3  # noqa: S101
 
     # Check t = 2
-    assert_almost_equal(eu_solver.derivative[2], [0, 3.6, 16.8])
-    assert_almost_equal(american_solver.derivative[2], [0, 3.6, 16.8])
+    assert_almost_equal(eu_AssetOptionSolver.derivative[2], [0, 3.6, 16.8])
+    assert_almost_equal(american_AssetOptionSolver.derivative[2], [0, 3.6, 16.8])
 
     # Check t = 1
-    assert_almost_equal(eu_solver.derivative[1], [2.29, 11.81], 2)
-    assert_almost_equal(american_solver.derivative[1], [2.29, 11.81], 2)
+    assert_almost_equal(eu_AssetOptionSolver.derivative[1], [2.29, 11.81], 2)
+    assert_almost_equal(american_AssetOptionSolver.derivative[1], [2.29, 11.81], 2)
 
     # Check t = 0
-    assert_almost_equal(eu_solver.derivative[0], [8.22], 2)
-    assert_almost_equal(american_solver.derivative[0], [8.22], 2)
+    assert_almost_equal(eu_AssetOptionSolver.derivative[0], [8.22], 2)
+    assert_almost_equal(american_AssetOptionSolver.derivative[0], [8.22], 2)
 
 
 def test_example_3_2() -> None:
@@ -716,11 +718,11 @@ def test_example_3_2() -> None:
     d = 1 / u
     R = math.exp(r * T / N)
 
-    # Get solver obj
-    eu_call = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="european", K=K)
-    eu_put = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="put", style="european", K=K)
-    us_call = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="call", style="american", K=K)
-    us_put = Solver.init(expire=N, S=S, u=u, d=d, R=R, type="put", style="american", K=K)
+    # Get AssetOptionSolver obj
+    eu_call = AssetOptionSolver(expire=N, S=S, u=u, d=d, R=R, type="call", style="european", K=K)
+    eu_put = AssetOptionSolver(expire=N, S=S, u=u, d=d, R=R, type="put", style="european", K=K)
+    us_call = AssetOptionSolver(expire=N, S=S, u=u, d=d, R=R, type="call", style="american", K=K)
+    us_put = AssetOptionSolver(expire=N, S=S, u=u, d=d, R=R, type="put", style="american", K=K)
 
     # Check values
     eu_call_derivative = {
@@ -781,3 +783,69 @@ def test_example_3_2() -> None:
         assert_almost_equal(eu_put.derivative[i], eu_put_derivative[i], 6)
         assert_almost_equal(us_call.derivative[i], us_call_derivative[i], 6)
         assert_almost_equal(us_put.derivative[i], us_put_derivative[i], 6)
+
+
+def test_seminar_7_4() -> None:
+    k = 1.3
+    F = 500000
+    X = 1.3
+    u = 1.1
+    d = 0.9
+    Rd = 1.01
+    Rf = 1.02
+    expire = 2
+    model = ForExOptionSolver(expire=expire, X=X, F=F, Rf=Rf, Rd=Rd, k=k, u=u, d=d, type="put", style="european")
+    assert_almost_equal(model.derivative.premium, 39648, 0)
+
+
+def test_quiz_7_5() -> None:
+    F = 1000
+    k = 1.3
+    X = 1.2
+    u = 1.3
+    d = 0.7
+    T = 1
+    Rd = 1.2
+    Rf = 1.1
+    model = ForExOptionSolver(expire=T, X=X, F=F, Rf=Rf, Rd=Rd, k=k, u=u, d=d, type="call", style="european")
+    assert_almost_equal(model.derivative.premium, 141.2, 1)
+
+
+def test_quiz_7_7() -> None:
+    F = 100
+    k = 1.04
+    X = 1.08
+    u = 1.6
+    d = 0.9
+    T = 2
+    Rd = 1.4
+    Rf = 1.1
+    model = ForExOptionSolver(expire=T, X=X, F=F, Rf=Rf, Rd=Rd, k=k, u=u, d=d, type="put", style="american")
+    assert_almost_equal(model.derivative.premium, 2.271, 3)
+
+
+def test_quiz_7_2() -> None:
+    X_0 = 1.3
+    Rd = 1.2
+    Rf = 1.1
+    F = 200
+    exercised_value = calculate_forward_rate_forex(Rd, Rf, X_0) * F
+    assert_almost_equal(exercised_value, 283.64, 2)
+
+
+def test_quiz_7_9() -> None:
+    X_0 = 1 / 0.66
+    Rd = 1.08
+    Rf = 1.03
+    forward_rate = calculate_forward_rate_forex(Rd, Rf, X_0)
+    assert_almost_equal(forward_rate, 1.589, 3)
+
+
+def test_quiz_7_10() -> None:
+    S_11 = 21
+    S_10 = 12
+    pi = 0.5
+    R = 1.02
+    S_0 = 1 / R * (pi * S_11 + (1 - pi) * S_10)
+    forward_rate = calculate_forward_rate(R, S_0)
+    assert_almost_equal(forward_rate, 16.5, 1)
