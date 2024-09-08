@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.models.asset import AssetModel
-from src.models.base import ContractType, OptionStyle, OptionType, StateT
+from src.models.base import OptionStyle, OptionType, StateT
 from src.models.indexable import Indexable
 from src.models.interest import InterestRateModel
 from src.models.pi import PiModel
