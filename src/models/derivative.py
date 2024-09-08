@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.models.asset import AssetModel
-from src.models.base import OptionStyle, OptionType, StateT
+from src.models.base import BarrierType, OptionStyle, OptionType, StateT
 from src.models.indexable import Indexable
 from src.models.interest import InterestRateModel
 from src.models.pi import PiModel
@@ -88,3 +88,22 @@ class OptionModel(Indexable):
                 self.set_state(n, np.maximum(exercise_value, step_value))
         else:
             raise ValueError("American option requires asset model")
+
+
+class BarrierOption(OptionModel):
+    def __init__(
+        self,
+        expire: int,
+        barrier: float,
+        R: InterestRateModel,
+        pi: PiModel,
+        strike: float = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        asset: AssetModel | None = None,
+        states: StateT | None = None,
+        barrier_type: BarrierType = "up and in",
+    ) -> None:
+        self.barrier = barrier
+        self.barrier_type = barrier_type
+        super().__init__(expire=expire, R=R, pi=pi, strike=strike, type=type, style=style, asset=asset, states=states)
