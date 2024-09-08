@@ -18,7 +18,6 @@ from src.helpers import (
     put_call_parity,
 )
 from src.models import (
-    BaseDerivative,
     ConstantPi,
     DerivativeModel,
     OptionType,
@@ -42,9 +41,7 @@ def test_quiz_1_7(
     type: OptionType,
     exp_value: float,
 ) -> None:
-    T = 1
-    W = BaseDerivative(strike=K, expire=T, type=type)
-    value = W.value(T, asset)
+    value = DerivativeModel.value_from_exercising(K=K, S=asset, type=type)
     assert_approx_equal(value, exp_value)
 
 
@@ -52,11 +49,9 @@ def test_quiz_1_9() -> None:
     N = 100
     P_0 = 1.47
     K = 14
-    T = 1
     R = 1.03
     S_1 = 7
-    W = BaseDerivative(strike=K, expire=T, type="put")
-    value = W.value(T, S_1)
+    value = DerivativeModel.value_from_exercising(K=K, S=S_1, type="put")
     assert_approx_equal((value - P_0 * R) * N, 548.59)
 
 
@@ -64,11 +59,9 @@ def test_quiz_1_10() -> None:
     N = 100
     K = 42
     C_0 = 0.55
-    T = 1
     R = 1.03
-    S_1 = 36
-    W = BaseDerivative(strike=K, expire=T, type="call")
-    value = W.value(T, S_1)
+    S_1 = 36.0
+    value = DerivativeModel.value_from_exercising(K=K, S=S_1, type="call")
     profit = C_0 * N * R - N * value
     assert_approx_equal(profit, 56.65)
 

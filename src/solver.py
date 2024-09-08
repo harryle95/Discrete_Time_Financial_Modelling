@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, overload
+from typing import Any, cast, overload
 
 from src.helpers import calculate_H0, calculate_H1, calculate_W_0_general, calculate_W_0_replicating
 from src.models import (
@@ -104,7 +104,7 @@ class Solver:
 
     @property
     def premium_state_price(self) -> float:
-        return sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1], strict=True)])
+        return cast(float, sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1], strict=True)]))
 
 
 class OneStepSolver(Solver):
