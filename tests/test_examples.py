@@ -21,13 +21,12 @@ from src.helpers import (
 )
 from src.models import (
     ConstantPi,
-    OptionType,
     asset_factory,
     interest_factory,
     pi_factory,
 )
 from src.models.base import BarrierType, NumberType, OptionStyle, OptionType
-from src.models.derivative import BarrierOption, Option
+from src.models.derivative import Option
 from src.solver import AssetOptionSolver, BarrierAssetOptionSolver, ForexOptionSolver, OneStepAssetOptionSolver
 
 
