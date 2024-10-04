@@ -17,6 +17,8 @@ from src.models import (
     pi_factory,
 )
 from src.models.asset import forex_factory
+from src.models.base import BarrierType, NumberType
+from src.models.derivative import BarrierOption, Option
 
 __all__ = ("AssetOptionSolver", "OneStepAssetOptionSolver")
 
@@ -42,8 +44,8 @@ class OptionSolver:
         return self._state_price
 
     @property
-    def premium_state_price(self) -> float:
-        return cast(float, sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1], strict=True)]))
+    def premium_state_price(self) -> NumberType:
+        return cast(NumberType, sum([i * j for i, j in zip(self.state_price[-1], self.derivative[-1], strict=True)]))
 
 
 class OneStepOptionSolver(OptionSolver):
@@ -61,7 +63,7 @@ class OneStepOptionSolver(OptionSolver):
         self.derivative = derivative
 
     @property
-    def H0(self) -> float:
+    def H0(self) -> NumberType:
         return calculate_H0(
             self.asset[1, 1],
             self.asset[1, 0],
@@ -71,7 +73,7 @@ class OneStepOptionSolver(OptionSolver):
         )
 
     @property
-    def H1(self) -> float:
+    def H1(self) -> NumberType:
         return calculate_H1(
             self.asset[1, 1],
             self.asset[1, 0],
@@ -80,7 +82,7 @@ class OneStepOptionSolver(OptionSolver):
         )
 
     @property
-    def premium(self) -> float:
+    def premium(self) -> NumberType:
         return calculate_W_0_general(
             self.derivative[1, 1],
             self.derivative[1, 0],
@@ -90,7 +92,7 @@ class OneStepOptionSolver(OptionSolver):
         )
 
     @property
-    def premium_replicating(self) -> float:
+    def premium_replicating(self) -> NumberType:
         return calculate_W_0_replicating(self.H0, self.H1, self.asset[0, 0])
 
 
@@ -100,14 +102,14 @@ class AssetOptionSolver(OptionSolver):
         self,
         *,
         expire: int,
-        S: float | int,
-        u: float,
-        d: float,
+        S: NumberType,
+        u: NumberType,
+        d: NumberType,
         W: StateT | None = None,
-        K: float = 0,
+        K: NumberType = 0,
         type: OptionType = "call",
         style: OptionStyle = "european",
-        R: float | StateT = 1.0,
+        R: NumberType | StateT = 1.0,
         **kwargs: Any,
     ) -> None: ...
     @overload
@@ -116,12 +118,12 @@ class AssetOptionSolver(OptionSolver):
         *,
         expire: int,
         S: StateT,
-        pi: float | StateT,
+        pi: NumberType | StateT,
         W: StateT | None = None,
-        K: float = 0,
+        K: NumberType = 0,
         type: OptionType = "call",
         style: OptionStyle = "european",
-        R: float | StateT = 1.0,
+        R: NumberType | StateT = 1.0,
         **kwargs: Any,
     ) -> None: ...
 
@@ -129,21 +131,21 @@ class AssetOptionSolver(OptionSolver):
         self,
         *,
         expire: int,
-        S: float | int | StateT,
-        u: float | None = None,
-        d: float | None = None,
+        S: NumberType | StateT,
+        u: NumberType | None = None,
+        d: NumberType | None = None,
         W: StateT | None = None,
-        K: float = 0,
+        K: NumberType = 0,
         type: OptionType = "call",
         style: OptionStyle = "european",
-        R: float | StateT = 1.0,
-        pi: float | StateT | None = None,
+        R: NumberType | StateT = 1.0,
+        pi: NumberType | StateT | None = None,
         **kwargs: Any,
     ) -> None:
         _asset = asset_factory(steps=expire, S=S, u=u, d=d)
         _R = interest_factory(R=R, steps=expire)
         _pi = pi_factory(pi=pi, steps=expire, asset=_asset, R=_R)
-        _derivative = OptionModel(
+        _derivative = Option(
             expire=expire,
             pi=_pi,
             R=_R,
@@ -156,19 +158,85 @@ class AssetOptionSolver(OptionSolver):
         super().__init__(expire=expire, asset=_asset, R=_R, pi=_pi, derivative=_derivative)
 
 
+class BarrierAssetOptionSolver(OptionSolver):
+    @overload
+    def __init__(
+        self,
+        *,
+        expire: int,
+        S: NumberType,
+        u: NumberType,
+        d: NumberType,
+        K: NumberType = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: NumberType | StateT = 1.0,
+        B: NumberType,
+        barrier_type: BarrierType = "up and in",
+        **kwargs: Any,
+    ) -> None: ...
+    @overload
+    def __init__(
+        self,
+        *,
+        expire: int,
+        S: StateT,
+        pi: NumberType | StateT,
+        K: NumberType = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: NumberType | StateT = 1.0,
+        B: NumberType,
+        barrier_type: BarrierType = "up and in",
+        **kwargs: Any,
+    ) -> None: ...
+
+    def __init__(
+        self,
+        *,
+        expire: int,
+        B: NumberType,
+        barrier_type: BarrierType = "up and in",
+        S: NumberType | StateT,
+        u: NumberType | None = None,
+        d: NumberType | None = None,
+        K: NumberType = 0,
+        type: OptionType = "call",
+        style: OptionStyle = "european",
+        R: NumberType | StateT = 1.0,
+        pi: NumberType | StateT | None = None,
+        **kwargs: Any,
+    ) -> None:
+        _asset = asset_factory(steps=expire, S=S, u=u, d=d)
+        _R = interest_factory(R=R, steps=expire)
+        _pi = pi_factory(pi=pi, steps=expire, asset=_asset, R=_R)
+        _derivative = BarrierOption(
+            expire=expire,
+            barrier=B,
+            pi=_pi,
+            R=_R,
+            strike=K,
+            type=type,
+            asset=_asset,
+            style=style,
+            barrier_type=barrier_type,
+        )
+        super().__init__(expire=expire, asset=_asset, R=_R, pi=_pi, derivative=_derivative)
+
+
 class OneStepAssetOptionSolver(OneStepOptionSolver):
     @overload
     def __init__(
         self,
         *,
-        S: float | int,
-        u: float,
-        d: float,
-        K: float = 0,
+        S: NumberType,
+        u: NumberType,
+        d: NumberType,
+        K: NumberType = 0,
         type: OptionType = "call",
         style: OptionStyle = "european",
-        R: float | StateT = 1.0,
-        pi: float | None = None,
+        R: NumberType | StateT = 1.0,
+        pi: NumberType | None = None,
         **kwargs: Any,
     ) -> None: ...
     @overload
@@ -177,29 +245,29 @@ class OneStepAssetOptionSolver(OneStepOptionSolver):
         *,
         S: StateT,
         W: StateT | None = None,
-        R: float | StateT = 1.0,
-        pi: float | None = None,
+        R: NumberType | StateT = 1.0,
+        pi: NumberType | None = None,
         **kwargs: Any,
     ) -> None: ...
 
     def __init__(
         self,
         *,
-        S: float | StateT | int,
-        u: float | None = None,
-        d: float | None = None,
+        S: NumberType | StateT | NumberType,
+        u: NumberType | None = None,
+        d: NumberType | None = None,
         W: StateT | None = None,
-        K: float = 0,
+        K: NumberType = 0,
         type: OptionType = "call",
         style: OptionStyle = "european",
-        R: float | StateT = 1.0,
-        pi: float | None = None,
+        R: NumberType | StateT = 1.0,
+        pi: NumberType | None = None,
         **kwargs: Any,
     ) -> None:
         _asset = asset_factory(steps=1, S=S, u=u, d=d)
         _R = interest_factory(R=R, steps=1)
         _pi = pi_factory(pi=pi, steps=1, asset=_asset, R=_R)
-        _derivative = OptionModel(
+        _derivative = Option(
             expire=1,
             pi=_pi,
             R=_R,
@@ -212,19 +280,19 @@ class OneStepAssetOptionSolver(OneStepOptionSolver):
         super().__init__(asset=_asset, R=_R, pi=_pi, derivative=_derivative)
 
 
-class ForExOptionSolver(OptionSolver):
+class ForexOptionSolver(OptionSolver):
     def __init__(
         self,
         *,
         expire: int,
-        X: float | int | StateT,
-        F: float | int,
-        Rf: float,
-        Rd: float,
-        k: float,
-        u: float | None = None,
-        d: float | None = None,
-        pi: float | None = None,
+        X: NumberType | StateT,
+        F: NumberType,
+        Rf: NumberType,
+        Rd: NumberType,
+        k: NumberType,
+        u: NumberType | None = None,
+        d: NumberType | None = None,
+        pi: NumberType | None = None,
         type: OptionType = "call",
         style: OptionStyle = "european",
         W: StateT | None = None,
@@ -236,7 +304,7 @@ class ForExOptionSolver(OptionSolver):
         _asset = forex_factory(steps=expire, X=X, F=F, Rf=Rf, u=u, d=d)
         _R = interest_factory(R=Rd, steps=expire)
         _pi = pi_factory(pi=pi, steps=expire, asset=_asset, R=_R)
-        _derivative = OptionModel(
+        _derivative = Option(
             expire=expire,
             pi=_pi,
             R=_R,
@@ -249,18 +317,18 @@ class ForExOptionSolver(OptionSolver):
         super().__init__(expire=expire, asset=_asset, R=_R, pi=_pi, derivative=_derivative)
 
 
-class OneStepForExOptionSolver(OneStepOptionSolver):
+class OneStepForexOptionSolver(OneStepOptionSolver):
     def __init__(
         self,
         *,
-        X: float | int | StateT,
-        F: float | int,
-        Rf: float,
-        Rd: float,
-        k: float,
-        u: float | None = None,
-        d: float | None = None,
-        pi: float | None = None,
+        X: NumberType | StateT,
+        F: NumberType,
+        Rf: NumberType,
+        Rd: NumberType,
+        k: NumberType,
+        u: NumberType | None = None,
+        d: NumberType | None = None,
+        pi: NumberType | None = None,
         type: OptionType = "call",
         style: OptionStyle = "european",
         W: StateT | None = None,
@@ -273,7 +341,7 @@ class OneStepForExOptionSolver(OneStepOptionSolver):
         _asset = forex_factory(steps=expire, X=X, F=F, Rf=Rf, u=u, d=d)
         _R = interest_factory(R=Rd, steps=expire)
         _pi = pi_factory(pi=pi, steps=expire, asset=_asset, R=_R)
-        _derivative = OptionModel(
+        _derivative = Option(
             expire=expire,
             pi=_pi,
             R=_R,
@@ -286,5 +354,5 @@ class OneStepForExOptionSolver(OneStepOptionSolver):
         super().__init__(asset=_asset, R=_R, pi=_pi, derivative=_derivative)
 
     @property
-    def H1(self) -> float:
+    def H1(self) -> NumberType:
         return 1 / self.Rf * super().H1

@@ -1,4 +1,4 @@
-from src.models.base import StateT
+from src.models.base import NumberType, StateT
 from src.models.indexable import Constant, Indexable
 
 __all__ = (
@@ -13,7 +13,7 @@ class InterestRateModel(Indexable): ...
 
 
 class ConstantInterestRate(Constant, InterestRateModel):
-    def __init__(self, R: float | int) -> None:
+    def __init__(self, R: NumberType) -> None:
         super().__init__(value=R)
 
 
@@ -27,10 +27,10 @@ class VariableInterestRate(InterestRateModel):
 
 
 def interest_factory(
-    R: float | int | StateT,
+    R: NumberType | StateT,
     steps: int | None = None,
 ) -> ConstantInterestRate | VariableInterestRate:
-    if isinstance(R, float | int):
+    if isinstance(R, NumberType):
         return ConstantInterestRate(R)
     if not steps:
         raise ValueError("Variable interest rate requires knowing steps")

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import numpy as np
 
-from src.models.base import StateT
+from src.models.base import NumberType, StateT
 from src.models.indexable import Indexable
 
 __all__ = ("StandardAsset", "CRRAsset", "asset_factory")
@@ -23,7 +25,7 @@ class StandardAsset(AssetModel):
 class CRRAsset(AssetModel):
     """Asset Model under CRR assumption"""
 
-    def __init__(self, S: float | int, u: float, d: float, steps: int) -> None:
+    def __init__(self, S: NumberType, u: NumberType, d: NumberType, steps: int) -> None:
         super().__init__(steps=steps)
         self.S = S
         self.u = u
@@ -34,16 +36,16 @@ class CRRAsset(AssetModel):
             self.set_state(t, state_value)
 
 
-class ForExAsset(StandardAsset):
-    def __init__(self, X: StateT, F: float | int, Rf: float, steps: int) -> None:
+class ForexAsset(StandardAsset):
+    def __init__(self, X: StateT, F: NumberType, Rf: NumberType, steps: int) -> None:
         self.X = X
         self.F = F
         self.Rf = Rf
         super().__init__(states={k: np.array(v) * F * np.power(Rf, k) for k, v in X.items()}, steps=steps)
 
 
-class CRRForExAsset(CRRAsset):
-    def __init__(self, X: float | int, u: float, d: float, F: float | int, Rf: float, steps: int) -> None:
+class CRRForexAsset(CRRAsset):
+    def __init__(self, X: NumberType, u: NumberType, d: NumberType, F: NumberType, Rf: NumberType, steps: int) -> None:
         self.X = X
         self.F = F
         self.Rf = Rf
@@ -52,39 +54,39 @@ class CRRForExAsset(CRRAsset):
 
 def forex_factory(
     steps: int,
-    X: int | float | StateT,
-    F: float,
-    Rf: float,
-    u: float | None = None,
-    d: float | None = None,
-) -> CRRForExAsset | ForExAsset:
+    X: NumberType | StateT,
+    F: NumberType,
+    Rf: NumberType,
+    u: NumberType | None = None,
+    d: NumberType | None = None,
+) -> CRRForexAsset | ForexAsset:
     if isinstance(X, dict):
-        return ForExAsset(X=X, F=F, Rf=Rf, steps=steps)
-    if isinstance(X, int | float):
+        return ForexAsset(X=X, F=F, Rf=Rf, steps=steps)
+    if isinstance(X, NumberType):
         if not u or not d:
             raise ValueError("CRR model expects non null u, d")
-        return CRRForExAsset(X=X, u=u, d=d, F=F, Rf=Rf, steps=steps)
+        return CRRForexAsset(X=X, u=u, d=d, F=F, Rf=Rf, steps=steps)
     raise TypeError(f"Invalid type for exchange rate: {type(X)}")
 
 
 def asset_factory(
     steps: int,
-    S: int | float | StateT,
-    u: float | None = None,
-    d: float | None = None,
+    S: NumberType | StateT,
+    u: NumberType | None = None,
+    d: NumberType | None = None,
 ) -> CRRAsset | StandardAsset:
     """Factory method to generate asset model
 
     Args:
-        steps (int): number of steps
-        S (float | StateT): used for CRR model - initial price. Defaults to None.
-        u (float | None, optional): used for CRR model - up factor. Defaults to None.
-        d (float | None, optional): used for CRR model - down factor. Defaults to None.
+        steps (NumberType): number of steps
+        S (NumberType | StateT): used for CRR model - initial price. Defaults to None.
+        u (NumberType | None, optional): used for CRR model - up factor. Defaults to None.
+        d (NumberType | None, optional): used for CRR model - down factor. Defaults to None.
 
     Returns:
         CRRAsset | StandardAsset: model
     """
-    if isinstance(S, float | int):
+    if isinstance(S, NumberType):
         if not u or not d:
             raise ValueError("CRR model expects non null S, u, d")
         return CRRAsset(S, u, d, steps)

@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from src.helpers import calculate_pi, calculate_pi_CRR
-from src.models.asset import AssetModel, CRRAsset, CRRForExAsset, ForExAsset
-from src.models.base import StateT
+from src.models.asset import AssetModel, CRRAsset, CRRForexAsset, ForexAsset
+from src.models.base import NumberType, StateT
 from src.models.indexable import Constant, Indexable
 from src.models.interest import ConstantInterestRate, InterestRateModel
 
@@ -17,7 +19,7 @@ class PiModel(Indexable): ...
 
 
 class ConstantPi(Constant, PiModel):
-    def __init__(self, value: float) -> None:
+    def __init__(self, value: NumberType) -> None:
         super().__init__(value=value)
 
 
@@ -27,10 +29,7 @@ class VariablePi(PiModel):
         for n in range(self.steps + 1):
             self.set_state(
                 n,
-                [
-                    (R[n, j] * asset[n, j] - asset[n + 1, j]) / (asset[n + 1, j + 1] - asset[n + 1, j])
-                    for j in range(n + 1)
-                ],
+                [(R[n, j] * asset[n, j] - asset[n + 1, j]) / (asset[n + 1, j + 1] - asset[n + 1, j]) for j in range(n + 1)],
             )
 
 
@@ -44,27 +43,27 @@ class StatePi(PiModel):
 
 
 def pi_factory(
-    pi: float | StateT | None = None,
+    pi: NumberType | StateT | None = None,
     steps: int | None = None,
     asset: AssetModel | None = None,
     R: InterestRateModel | None = None,
 ) -> ConstantPi | VariablePi | StatePi:
-    if isinstance(pi, float):
+    if isinstance(pi, NumberType):
         return ConstantPi(pi)
     if isinstance(pi, dict) and steps:
         return StatePi(pi=pi, steps=steps)
-    if isinstance(asset, CRRForExAsset) and isinstance(R, ConstantInterestRate):
-        pi = calculate_pi_CRR(asset.u, asset.d, R.value / asset.Rf)
-        return ConstantPi(pi)
+    if isinstance(asset, CRRForexAsset) and isinstance(R, ConstantInterestRate):
+        pi_value = calculate_pi_CRR(asset.u, asset.d, R.value / asset.Rf)
+        return ConstantPi(pi_value)
     if isinstance(asset, CRRAsset) and isinstance(R, ConstantInterestRate):
-        pi = calculate_pi_CRR(asset.u, asset.d, R.value)
-        return ConstantPi(pi)
-    if isinstance(asset, ForExAsset) and isinstance(R, ConstantInterestRate):
-        pi = calculate_pi(asset[1, 1], asset[1, 0], R.value / asset.Rf, asset[0, 0])
-        return ConstantPi(pi)
+        pi_value = calculate_pi_CRR(asset.u, asset.d, R.value)
+        return ConstantPi(pi_value)
+    if isinstance(asset, ForexAsset) and isinstance(R, ConstantInterestRate):
+        pi_value = calculate_pi(asset[1, 1], asset[1, 0], R.value / asset.Rf, asset[0, 0])
+        return ConstantPi(pi_value)
     if asset and isinstance(R, ConstantInterestRate):
-        pi = calculate_pi(asset[1, 1], asset[1, 0], R.value, asset[0, 0])
-        return ConstantPi(pi)
+        pi_value = calculate_pi(asset[1, 1], asset[1, 0], R.value, asset[0, 0])
+        return ConstantPi(pi_value)
     if asset and R:
         return VariablePi(R, asset)
     raise ValueError("Expect at least value or states and steps or asset and R to be provided")
