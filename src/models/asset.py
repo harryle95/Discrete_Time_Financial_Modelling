@@ -22,6 +22,38 @@ class StandardAsset(AssetModel):
             self.set_state(time, state)
 
 
+class BondAsset(AssetModel):
+    def __init__(
+        self,
+        F: NumberType,
+        steps: int,
+        P: NumberType,
+        c: NumberType,
+    ) -> None:
+        super().__init__(steps)
+        self.F = F
+        self.P = P
+        self.c = c
+
+    @staticmethod
+    def calculate_yield(F: NumberType, P: NumberType, c: NumberType) -> NumberType:
+        return c * F / P * 100
+
+    @staticmethod
+    def calcualte_price(F: NumberType, c: NumberType, r: NumberType, n: int) -> NumberType:
+        return sum([c * F / (1 + r) ** t for t in range(1, n + 1)]) + F / (1 + r) ** n
+
+    @staticmethod
+    def calculate_ytm(F: NumberType, P: NumberType, c: NumberType, n: int) -> NumberType:
+        C = c * F
+        return (C + (F - P) / n) / ((F + P) / 2) * 100
+
+
+class ZeroCouponBondAsset(BondAsset):
+    def __init__(self, steps: int, P: NumberType) -> None:
+        super().__init__(1, steps, P, 0)
+
+
 class CRRAsset(AssetModel):
     """Asset Model under CRR assumption"""
 
@@ -74,7 +106,8 @@ def asset_factory(
     S: NumberType | StateT,
     u: NumberType | None = None,
     d: NumberType | None = None,
-) -> CRRAsset | StandardAsset:
+    P: NumberType | None = None,
+) -> CRRAsset | StandardAsset | ZeroCouponBondAsset:
     """Factory method to generate asset model
 
     Args:
@@ -82,10 +115,13 @@ def asset_factory(
         S (NumberType | StateT): used for CRR model - initial price. Defaults to None.
         u (NumberType | None, optional): used for CRR model - up factor. Defaults to None.
         d (NumberType | None, optional): used for CRR model - down factor. Defaults to None.
+        P (NumberType | None, optional): used for ZeroCouponBondAssetModfel - bond premium. Default to None
 
     Returns:
         CRRAsset | StandardAsset: model
     """
+    if P is not None:
+        return ZeroCouponBondAsset(steps, P)
     if isinstance(S, NumberType):
         if not u or not d:
             raise ValueError("CRR model expects non null S, u, d")

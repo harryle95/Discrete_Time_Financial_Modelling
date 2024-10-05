@@ -25,6 +25,7 @@ from src.models import (
     interest_factory,
     pi_factory,
 )
+from src.models.asset import BondAsset
 from src.models.base import BarrierType, NumberType, OptionStyle, OptionType
 from src.models.derivative import Option
 from src.solver import AssetOptionSolver, BarrierAssetOptionSolver, ForexOptionSolver, OneStepAssetOptionSolver
@@ -1035,3 +1036,21 @@ def test_quiz_7_10() -> None:
     S_0 = 1 / R * (pi * S_11 + (1 - pi) * S_10)
     forward_rate = calculate_forward_rate(R, S_0)
     assert_almost_equal(forward_rate, 16.5, 1)
+
+
+def test_example_4_1() -> None:
+    F = 20000
+    P = 18000
+    n = 5
+    c = 5 / 100
+    y = BondAsset.calculate_yield(F, P, c)
+    assert_almost_equal(y, 5.555, 3)
+
+
+def test_example_4_2() -> None:
+    F = 20000
+    P = 18000
+    n = 5
+    c = 5 / 100
+    ytm = BondAsset.calculate_ytm(F, P, c, n)
+    assert_almost_equal(ytm, 7.36, 2)
